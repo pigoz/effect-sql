@@ -1,5 +1,11 @@
 # effect-drizzle
 
+## 0.0.5
+
+### Patch Changes
+
+- [`df6330c`](https://github.com/pigoz/effect-drizzle/commit/df6330cb843dad70e49aa55ee1824dfa7257fe81) Thanks [@pigoz](https://github.com/pigoz)! - feat: re-export InferModel
+
 ## 0.0.4
 
 ### Patch Changes
