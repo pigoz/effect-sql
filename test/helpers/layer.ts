@@ -6,15 +6,12 @@ import { Pool } from "pg";
 import { globSync } from "glob";
 import * as path from "path";
 import * as fs from "fs";
-import {
-  DrizzlePgConnection,
-  DrizzlePgConnectionPool,
-} from "effect-drizzle/pg";
+import { PgConnection, PgConnectionPool } from "effect-drizzle/pg";
 
-export type TestLayer = DrizzlePgConnection;
+export type TestLayer = PgConnection;
 
 const DrizzlePgConnectionTest = Layer.effect(
-  DrizzlePgConnection,
+  PgConnection,
   pipe(
     Effect.promise(async () => {
       const container = await new PostgreSqlContainer()
@@ -39,7 +36,7 @@ const DrizzlePgConnectionTest = Layer.effect(
 
       await pool.query(sql);
 
-      return new DrizzlePgConnectionPool(pool);
+      return new PgConnectionPool(pool);
     })
   )
 );

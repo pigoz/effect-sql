@@ -4,6 +4,8 @@ import * as Data from "@effect/data/Data";
 import * as Match from "@effect/match";
 import * as Exit from "@effect/io/Exit";
 import * as Context from "@effect/data/Context";
+import * as Either from "@effect/data/Either";
+import * as REA from "@effect/data/ReadonlyArray";
 import { QueryPromise } from "drizzle-orm/query-promise";
 import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
@@ -16,40 +18,36 @@ export * from "drizzle-orm/pg-core";
  */
 export const db = drizzle(null as any);
 
-export class DrizzlePgConnectionPool {
-  readonly _tag = "DrizzlePgConnectionPool";
+export class PgConnectionPool {
+  readonly _tag = "PgConnectionPool";
   constructor(readonly queryable: pg.Pool, readonly savepoint: number = 0) {}
 }
 
-export class DrizzlePgConnectionPoolClient {
-  readonly _tag = "DrizzlePgConnectionPoolClient";
+export class PgConnectionPoolClient {
+  readonly _tag = "PgConnectionPoolClient";
   constructor(
     readonly queryable: pg.PoolClient,
     readonly savepoint: number = 0
   ) {}
 }
 
-export type DrizzlePgConnection =
-  | DrizzlePgConnectionPool
-  | DrizzlePgConnectionPoolClient;
+export type PgConnection = PgConnectionPool | PgConnectionPoolClient;
+export const PgConnection = Context.Tag<PgConnection>("PgConnection");
 
-export const DrizzlePgConnection =
-  Context.Tag<DrizzlePgConnection>("DrizzleConnection");
-
-type DrizzlePgBuilder<A> = QueryPromise<A> & {
+type PgBuilder<A> = QueryPromise<A> & {
   toSQL: () => { sql: string; params: unknown[] };
 };
 
-export class DrizzlePgError extends Data.TaggedClass("DrizzlePgError")<{
+export class PgError extends Data.TaggedClass("PgError")<{
   message: string;
   code: string;
 }> {}
 
-export function runQuery<Builder extends DrizzlePgBuilder<any>>(
+export function runQuery<Builder extends PgBuilder<any>>(
   builder: Builder
-): Effect.Effect<DrizzlePgConnection, DrizzlePgError, Awaited<Builder>> {
+): Effect.Effect<PgConnection, PgError, Awaited<Builder>> {
   const sql = builder.toSQL();
-  return runRawQuery(sql.sql, sql.params);
+  return Effect.map(runRawQuery(sql.sql, sql.params), (_) => _ as any);
 }
 
 export class RecordNotFound extends Data.TaggedClass("RecordNotFound")<{
@@ -57,46 +55,88 @@ export class RecordNotFound extends Data.TaggedClass("RecordNotFound")<{
   params: unknown[];
 }> {}
 
-export function runQueryOne<Builder extends DrizzlePgBuilder<any>>(
+export function runQueryOne<
+  Builder extends PgBuilder<any>,
+  Element extends Awaited<Builder> extends (infer X)[] ? X : never
+>(
   builder: Builder
-): Awaited<Builder> extends (infer X)[]
-  ? Effect.Effect<DrizzlePgConnection, DrizzlePgError, X>
-  : never {
+): Effect.Effect<PgConnection, PgError | RecordNotFound, Element> {
   return pipe(
     builder,
     runQuery,
     Effect.flatMap((x) => {
-      const list = x as any;
-      // maybe should Effect.die if > 1 or add runQueryExactlyOne
-      if (list.length < 1) {
-        return Effect.fail(new RecordNotFound({ ...builder.toSQL() }));
-      } else {
-        return Effect.succeed(list[0]);
-      }
+      return pipe(
+        x as Element[],
+        REA.head,
+        Either.fromOption(() => new RecordNotFound({ ...builder.toSQL() })),
+        Effect.fromEither
+      );
     })
-  ) as any;
+  );
 }
 
-export function runRawQuery<R = unknown[]>(text: string, values?: unknown[]) {
+export class RecordsTooMany extends Data.TaggedClass("RecordsTooMany")<{
+  sql: string;
+  params: unknown[];
+}> {}
+
+export function runQueryExactlyOne<
+  Builder extends PgBuilder<any>,
+  Element extends Awaited<Builder> extends (infer X)[] ? X : never
+>(
+  builder: Builder
+): Effect.Effect<
+  PgConnection,
+  PgError | RecordNotFound | RecordsTooMany,
+  Element
+> {
   return pipe(
-    Effect.service(DrizzlePgConnection),
+    builder,
+    runQuery,
+    Effect.flatMap(
+      Effect.unified((x) => {
+        const [head, ...rest] = x as Element[];
+
+        if (rest.length > 0) {
+          return Effect.fail(new RecordsTooMany({ ...builder.toSQL() }));
+        }
+
+        return pipe(
+          head,
+          Either.fromNullable(() => new RecordNotFound({ ...builder.toSQL() })),
+          Effect.fromEither
+        );
+      })
+    )
+  );
+}
+
+export function runRawQuery(text: string, values?: unknown[]) {
+  return pipe(
+    Effect.service(PgConnection),
     Effect.flatMap(({ queryable }) =>
-      Effect.async<never, DrizzlePgError, R>((resume) => {
+      Effect.async<never, PgError, unknown[]>((resume) => {
         const query = { text, values };
-        queryable.query(query, (error: any, data) => {
-          if (error) {
-            resume(
-              Effect.fail(
-                new DrizzlePgError({
-                  code: (error as any).code,
-                  message: error.message,
-                })
-              )
-            );
-          } else {
-            resume(Effect.succeed(data.rows as any));
+        queryable.query(
+          query,
+          (
+            error: pg.DatabaseError,
+            data: pg.QueryResult<pg.QueryResultRow>
+          ) => {
+            if (error) {
+              resume(
+                Effect.fail(
+                  new PgError({
+                    code: error.code,
+                    message: error.message,
+                  })
+                )
+              );
+            } else {
+              resume(Effect.succeed(data.rows));
+            }
           }
-        });
+        );
       })
     )
   );
@@ -109,9 +149,9 @@ export function transaction<R, E1, A>(
   const matchSavepoint = <R1, R2, E1, E2, A1, A2>(
     onPositive: (name: string) => Effect.Effect<R1, E1, A1>,
     onZero: () => Effect.Effect<R2, E2, A2>
-  ): Effect.Effect<DrizzlePgConnection | R1 | R2, E1 | E2, A1 | A2> =>
+  ): Effect.Effect<PgConnection | R1 | R2, E1 | E2, A1 | A2> =>
     Effect.gen(function* ($) {
-      const x = yield* $(Effect.service(DrizzlePgConnection));
+      const x = yield* $(Effect.service(PgConnection));
       return x.savepoint > 0
         ? yield* $(onPositive(`savepoint_${x.savepoint}`))
         : yield* $(onZero());
@@ -132,34 +172,31 @@ export function transaction<R, E1, A>(
     () => runRawQuery(`COMMIT`)
   );
 
-  const connect: Effect.Effect<
-    DrizzlePgConnection,
-    never,
-    DrizzlePgConnectionPoolClient
-  > = pipe(
-    Effect.service(DrizzlePgConnection),
-    Effect.flatMap(
-      pipe(
-        Match.type<DrizzlePgConnection>(),
-        Match.tag("DrizzlePgConnectionPool", (_) =>
-          pipe(
-            // XXX: remove promise
-            Effect.promise(() => _.queryable.connect()),
-            Effect.map(
-              (queryable) => new DrizzlePgConnectionPoolClient(queryable, 0)
+  const connect: Effect.Effect<PgConnection, never, PgConnectionPoolClient> =
+    pipe(
+      Effect.service(PgConnection),
+      Effect.flatMap(
+        pipe(
+          Match.type<PgConnection>(),
+          Match.tag("PgConnectionPool", (_) =>
+            pipe(
+              // XXX: remove promise
+              Effect.promise(() => _.queryable.connect()),
+              Effect.map(
+                (queryable) => new PgConnectionPoolClient(queryable, 0)
+              )
             )
-          )
-        ),
-        Match.tag("DrizzlePgConnectionPoolClient", (_) =>
-          Effect.succeed({ ..._, savepoint: _.savepoint + 1 })
-        ),
-        Match.exhaustive
+          ),
+          Match.tag("PgConnectionPoolClient", (_) =>
+            Effect.succeed({ ..._, savepoint: _.savepoint + 1 })
+          ),
+          Match.exhaustive
+        )
       )
-    )
-  );
+    );
 
-  const injectPoolClient = (_: DrizzlePgConnection) =>
-    Effect.updateService(DrizzlePgConnection, () => _);
+  const injectPoolClient = (_: PgConnection) =>
+    Effect.updateService(PgConnection, () => _);
 
   const acquire = pipe(
     connect,
@@ -172,13 +209,10 @@ export function transaction<R, E1, A>(
     )
   );
 
-  const use = (conn: DrizzlePgConnection) =>
+  const use = (conn: PgConnection) =>
     pipe(Effect.suspend(self), injectPoolClient(conn));
 
-  const release = <E, A>(
-    conn: DrizzlePgConnectionPoolClient,
-    exit: Exit.Exit<E, A>
-  ) =>
+  const release = <E, A>(conn: PgConnectionPoolClient, exit: Exit.Exit<E, A>) =>
     pipe(
       exit,
       Exit.match(
