@@ -1,5 +1,11 @@
 # effect-drizzle
 
+## 0.0.6
+
+### Patch Changes
+
+- [`a8b28ab`](https://github.com/pigoz/effect-drizzle/commit/a8b28ab8467ba8ef5d3dfece48ce56c7742e7d30) Thanks [@pigoz](https://github.com/pigoz)! - feat(pg): improve types, add runQueryExactlyOne
+
 ## 0.0.5
 
 ### Patch Changes
