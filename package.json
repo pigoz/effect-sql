@@ -48,9 +48,9 @@
   "dependencies": {
     "@effect/data": "^0.7.1",
     "@effect/io": "^0.14.1",
-    "@effect/match": "^0.5.1",
-    "@effect/schema": "^0.6.0",
-    "drizzle-orm": "^0.23.1"
+    "@effect/match": "^0.6.0",
+    "@effect/schema": "^0.7.0",
+    "drizzle-orm": "^0.23.2"
   },
   "devDependencies": {
     "@babel/cli": "^7.21.0",
@@ -68,7 +68,7 @@
     "babel-plugin-annotate-pure-calls": "^0.4.0",
     "concurrently": "^7.6.0",
     "cpx": "^1.5.0",
-    "drizzle-kit": "^0.17.0",
+    "drizzle-kit": "^0.17.1",
     "glob": "^9.3.2",
     "pg": "^8.10.0",
     "picocolors": "^1.0.0",

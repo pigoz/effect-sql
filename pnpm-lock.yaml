@@ -11,8 +11,8 @@ specifiers:
   '@effect/babel-plugin': ^0.2.0
   '@effect/data': ^0.7.1
   '@effect/io': ^0.14.1
-  '@effect/match': ^0.5.1
-  '@effect/schema': ^0.6.0
+  '@effect/match': ^0.6.0
+  '@effect/schema': ^0.7.0
   '@types/debug': ^4.1.7
   '@types/glob': ^8.1.0
   '@types/node': ^18.15.10
@@ -20,8 +20,8 @@ specifiers:
   babel-plugin-annotate-pure-calls: ^0.4.0
   concurrently: ^7.6.0
   cpx: ^1.5.0
-  drizzle-kit: ^0.17.0
-  drizzle-orm: ^0.23.1
+  drizzle-kit: ^0.17.1
+  drizzle-orm: ^0.23.2
   glob: ^9.3.2
   pg: ^8.10.0
   picocolors: ^1.0.0
@@ -34,9 +34,9 @@ specifiers:
 dependencies:
   '@effect/data': 0.7.1
   '@effect/io': 0.14.1
-  '@effect/match': 0.5.1
-  '@effect/schema': 0.6.0
-  drizzle-orm: 0.23.1_@types+pg@8.6.6+pg@8.10.0
+  '@effect/match': 0.6.0
+  '@effect/schema': 0.7.0
+  drizzle-orm: 0.23.2_@types+pg@8.6.6+pg@8.10.0
 
 devDependencies:
   '@babel/cli': 7.21.0_@babel+core@7.21.3
@@ -54,7 +54,7 @@ devDependencies:
   babel-plugin-annotate-pure-calls: 0.4.0_@babel+core@7.21.3
   concurrently: 7.6.0
   cpx: 1.5.0
-  drizzle-kit: 0.17.0
+  drizzle-kit: 0.17.1
   glob: 9.3.2
   pg: 8.10.0
   picocolors: 1.0.0
@@ -553,26 +553,8 @@ packages:
       '@babel/core': 7.21.3
     dev: true
 
-  /@effect/data/0.4.1:
-    resolution: {integrity: sha512-FdQ0qbYL7t+GP5eWdAPC+oeN2w3zqnujrdDLp/sj58UtMxFSHg21crprmbmiAJAWsL5EdB9aZzcisBGn382xHg==}
-    dev: false
-
-  /@effect/data/0.5.1:
-    resolution: {integrity: sha512-ywgRui90ugXsSDggthqHFWA4unsD0XBsKoW63mXWFnya7piEDWRhqa9oXIXqwzA6m1WOY1L+OQXxovw+OJpKgQ==}
-    dev: false
-
-  /@effect/data/0.6.0:
-    resolution: {integrity: sha512-YMdFrQPd7jDxejmNKDDrZnjSzbM+RY3dPJ94VYMDNOYBdcQTj61kk5C/HUdddlbNdI5ukiSWO1CaZlnVU9gPLA==}
-    dev: false
-
   /@effect/data/0.7.1:
     resolution: {integrity: sha512-nIovYR9vSX0s+YKsMfvYDlFvkdGhUGYFoll/zRbbLVTwZ0S0h9zlsKgSyyQKRcar4fd/H01xuiS39MzmY1+uyA==}
-    dev: false
-
-  /@effect/io/0.13.0:
-    resolution: {integrity: sha512-SMOcsqn16Y/Xnf6ELfYQdEPp7yG5C19GByJzaD+okt6qSsb6Z1jWuE2+LzuqqKAESfaEUkHC1hnBmBUnXm1r2w==}
-    dependencies:
-      '@effect/data': 0.6.0
     dev: false
 
   /@effect/io/0.14.1:
@@ -581,25 +563,18 @@ packages:
       '@effect/data': 0.7.1
     dev: false
 
-  /@effect/match/0.5.1:
-    resolution: {integrity: sha512-sSiXkvc8cua/T+89VDft6Am4tzSKwMKCLfWLcDgeZkuXdCz08EYz7A5c+mMsKDwf0DifWU4wnlRoRpq0G/BnVA==}
+  /@effect/match/0.6.0:
+    resolution: {integrity: sha512-wgqIcBRLTh+1NsLsbOnC1XD134G6/p2e4zCM2xpw05UTO4v25S01xGCI9KVOkE4F5EPsTksw6OU9rkIE6H3zqg==}
     dependencies:
-      '@effect/data': 0.5.1
-      '@effect/schema': 0.2.1
+      '@effect/data': 0.7.1
+      '@effect/schema': 0.7.0
     dev: false
 
-  /@effect/schema/0.2.1:
-    resolution: {integrity: sha512-ZaSUaIDD5rgGnl3j+XtoDO1ARUbjCWTbGdMQoaYQJrf/0NtovYVTGnEzIAqXBvi2pMw3suGsP7KQyHToHY8NHg==}
+  /@effect/schema/0.7.0:
+    resolution: {integrity: sha512-nFIkv3AYqLFEs3o5MOMiKygBabnbmUY/Ubex6wqifkiC52E/49EJ/q5+h1Psv+we4u6qB/EX5HtDa/gRYZ7IGA==}
     dependencies:
-      '@effect/data': 0.4.1
-      fast-check: 3.7.1
-    dev: false
-
-  /@effect/schema/0.6.0:
-    resolution: {integrity: sha512-frpEeHu8VRohApc160xURhpFFydLbBpPnNOsXYbwqgPWMhYw7UjeN8ZIeW/Y6E1OSPtAENLAMsa/Ni4Cy+emvg==}
-    dependencies:
-      '@effect/data': 0.6.0
-      '@effect/io': 0.13.0
+      '@effect/data': 0.7.1
+      '@effect/io': 0.14.1
       fast-check: 3.7.1
     dev: false
 
@@ -1924,8 +1899,8 @@ packages:
       wordwrap: 1.0.0
     dev: true
 
-  /drizzle-kit/0.17.0:
-    resolution: {integrity: sha512-b9Yr+oHz0BtBc4zhhZQ+K83w8AiVEG5qfBzjiaqzjhMnlK0cxbLlZIdq95aaUqokKc8rfxpNmmzrm67SERSzYA==}
+  /drizzle-kit/0.17.1:
+    resolution: {integrity: sha512-1+/RSzVMRpAjqQzr+Gi8st3Y3GrRzun/EG9MwASZ/iYOm3erLJgAaM4xTz9RiM/wLYonPI+I5MZRXStSpCfEmg==}
     hasBin: true
     dependencies:
       camelcase: 7.0.1
@@ -1941,8 +1916,8 @@ packages:
       - supports-color
     dev: true
 
-  /drizzle-orm/0.23.1_@types+pg@8.6.6+pg@8.10.0:
-    resolution: {integrity: sha512-ceRajGOw8mHsqjGwlfFCIVjFOrtmifyuIyWPndQnTTXPDNoX8hbxMZz5nEevko8B9C5Agr8G1vfTubnW3jqhtA==}
+  /drizzle-orm/0.23.2_@types+pg@8.6.6+pg@8.10.0:
+    resolution: {integrity: sha512-GSOhOc+gGSMsf3eyBzL1Yb0g0M3pOurWmFI1lVhOrmMQCVuA/smJgYSy4UeTzBV521+J+emiFaSKSomEmc+fog==}
     peerDependencies:
       '@aws-sdk/client-rds-data': '>=3'
       '@cloudflare/workers-types': '>=3'
