@@ -1,5 +1,11 @@
 # effect-drizzle
 
+## 0.0.4
+
+### Patch Changes
+
+- [`3cc238d`](https://github.com/pigoz/effect-drizzle/commit/3cc238df575f96e7312097c4e143228b5512c32c) Thanks [@pigoz](https://github.com/pigoz)! - chore(deps): update drizzle-orm
+
 ## 0.0.3
 
 ### Patch Changes
