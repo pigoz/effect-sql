@@ -1,8 +1,20 @@
 {
   "name": "effect-drizzle",
   "version": "0.0.1",
-  "description": "",
-  "main": "index.js",
+  "description": "Integration of Drizzle into Effect",
+  "publishConfig": {
+    "access": "public",
+    "directory": "dist"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pigoz/effect-drizzle.git"
+  },
+  "tags": [
+    "typescript",
+    "functional-programming",
+    "orm"
+  ],
   "scripts": {
     "test": "vitest",
     "migrate:pg": "drizzle-kit generate:pg --out test/migrations/pg --schema test/pg.schema.ts",
