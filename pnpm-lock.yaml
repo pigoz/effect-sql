@@ -21,7 +21,7 @@ specifiers:
   concurrently: ^7.6.0
   cpx: ^1.5.0
   drizzle-kit: ^0.17.0
-  drizzle-orm: ^0.23.1
+  drizzle-orm: 0.23.2-e17a5ba
   glob: ^9.3.2
   pg: ^8.10.0
   picocolors: ^1.0.0
@@ -36,7 +36,7 @@ dependencies:
   '@effect/io': 0.14.1
   '@effect/match': 0.5.1
   '@effect/schema': 0.6.0
-  drizzle-orm: 0.23.1_@types+pg@8.6.6+pg@8.10.0
+  drizzle-orm: 0.23.2-e17a5ba_@types+pg@8.6.6+pg@8.10.0
 
 devDependencies:
   '@babel/cli': 7.21.0_@babel+core@7.21.3
@@ -1941,8 +1941,8 @@ packages:
       - supports-color
     dev: true
 
-  /drizzle-orm/0.23.1_@types+pg@8.6.6+pg@8.10.0:
-    resolution: {integrity: sha512-ceRajGOw8mHsqjGwlfFCIVjFOrtmifyuIyWPndQnTTXPDNoX8hbxMZz5nEevko8B9C5Agr8G1vfTubnW3jqhtA==}
+  /drizzle-orm/0.23.2-e17a5ba_@types+pg@8.6.6+pg@8.10.0:
+    resolution: {integrity: sha512-IIZBrvy7uuaW8HISOJqcvsHsX4CpEeVZjqDM+Ve2bVE1NXGH4gbiVLcU2PcAvNXZ4wFPzgAFdHB3qBPq1t1xHw==}
     peerDependencies:
       '@aws-sdk/client-rds-data': '>=3'
       '@cloudflare/workers-types': '>=3'
