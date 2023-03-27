@@ -1,5 +1,11 @@
 # effect-drizzle
 
+## 0.0.3
+
+### Patch Changes
+
+- [`333ec90`](https://github.com/pigoz/effect-drizzle/commit/333ec90f83e2bae051c94891fc86e0725d3d5a9f) Thanks [@pigoz](https://github.com/pigoz)! - fix package.json
+
 ## 0.0.2
 
 ### Patch Changes
