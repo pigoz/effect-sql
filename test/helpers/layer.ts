@@ -44,5 +44,3 @@ const DrizzlePgConnectionTest = Layer.effect(
 export const testLayer: Layer.Layer<never, never, TestLayer> = pipe(
   DrizzlePgConnectionTest
 );
-
-export async function getPostgreSqlContainerUri() {}

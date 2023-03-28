@@ -75,6 +75,7 @@
     "rimraf": "^4.4.1",
     "testcontainers": "^9.3.0",
     "typescript": "^5.0.2",
+    "vite": "^4.2.1",
     "vite-tsconfig-paths": "^4.0.7",
     "vitest": "^0.29.7"
   }

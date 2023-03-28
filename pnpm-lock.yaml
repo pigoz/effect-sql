@@ -28,6 +28,7 @@ specifiers:
   rimraf: ^4.4.1
   testcontainers: ^9.3.0
   typescript: ^5.0.2
+  vite: ^4.2.1
   vite-tsconfig-paths: ^4.0.7
   vitest: ^0.29.7
 
@@ -61,7 +62,8 @@ devDependencies:
   rimraf: 4.4.1
   testcontainers: 9.3.0
   typescript: 5.0.2
-  vite-tsconfig-paths: 4.0.7_typescript@5.0.2
+  vite: 4.2.1_@types+node@18.15.10
+  vite-tsconfig-paths: 4.0.7_bi7wsi5xkno72wnymskyicz4pu
   vitest: 0.29.7
 
 packages:
@@ -4960,7 +4962,7 @@ packages:
       - terser
     dev: true
 
-  /vite-tsconfig-paths/4.0.7_typescript@5.0.2:
+  /vite-tsconfig-paths/4.0.7_bi7wsi5xkno72wnymskyicz4pu:
     resolution: {integrity: sha512-MwIYaby6kcbQGZqMH+gAK6h0UYQGOkjsuAgw4q6bP/5vWkn8VKvnmLuCQHA2+IzHAJHnE8OFTO4lnJLFMf9+7Q==}
     peerDependencies:
       vite: '*'
@@ -4971,6 +4973,7 @@ packages:
       debug: 4.3.4
       globrex: 0.1.2
       tsconfck: 2.1.1_typescript@5.0.2
+      vite: 4.2.1_@types+node@18.15.10
     transitivePeerDependencies:
       - supports-color
       - typescript
