@@ -1,5 +1,11 @@
 # effect-drizzle
 
+## 0.0.7
+
+### Patch Changes
+
+- [`46e5d39`](https://github.com/pigoz/effect-drizzle/commit/46e5d39e63011ec8e13b820954bd9e70ef3632f4) Thanks [@pigoz](https://github.com/pigoz)! - feat(errors): use shorter names
+
 ## 0.0.6
 
 ### Patch Changes
