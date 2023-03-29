@@ -1,6 +1,5 @@
 /// <reference types="vitest" />
-
-import { defineConfig } from "vite";
+import { defineConfig } from "vitest/config";
 import tsconfigPaths from "vite-tsconfig-paths";
 
 export default defineConfig({
@@ -8,6 +7,5 @@ export default defineConfig({
   test: {
     include: ["./test/**/*.test.{js,mjs,cjs,ts,mts,cts}"],
     setupFiles: ["./test/helpers/setup.runtime.ts"],
-    globals: true,
   },
 });

@@ -113,7 +113,7 @@ export function runQueryExactlyOne<
 
 export function runRawQuery(text: string, values?: unknown[]) {
   return pipe(
-    Effect.service(PgConnection),
+    PgConnection,
     Effect.flatMap(({ queryable }) =>
       Effect.async<never, PgError, unknown[]>((resume) => {
         const query = { text, values };
@@ -151,7 +151,7 @@ export function transaction<R, E1, A>(
     onZero: () => Effect.Effect<R2, E2, A2>
   ): Effect.Effect<PgConnection | R1 | R2, E1 | E2, A1 | A2> =>
     Effect.gen(function* ($) {
-      const x = yield* $(Effect.service(PgConnection));
+      const x = yield* $(PgConnection);
       return x.savepoint > 0
         ? yield* $(onPositive(`savepoint_${x.savepoint}`))
         : yield* $(onZero());
@@ -174,7 +174,7 @@ export function transaction<R, E1, A>(
 
   const connect: Effect.Effect<PgConnection, never, PgConnectionPoolClient> =
     pipe(
-      Effect.service(PgConnection),
+      PgConnection,
       Effect.flatMap(
         pipe(
           Match.type<PgConnection>(),
