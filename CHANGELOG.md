@@ -1,5 +1,11 @@
 # effect-drizzle
 
+## 0.0.9
+
+### Patch Changes
+
+- [`091bc32`](https://github.com/pigoz/effect-drizzle/commit/091bc32fdeff9ab14d918c47f0d0776f3f56c303) Thanks [@pigoz](https://github.com/pigoz)! - fix: move to global import, remove pointless exports
+
 ## 0.0.8
 
 ### Patch Changes
