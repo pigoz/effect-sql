@@ -8,9 +8,8 @@ import * as REA from "@effect/data/ReadonlyArray";
 import { QueryPromise } from "drizzle-orm/query-promise";
 import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
-import { PgError, NotFound, TooMany } from "./errors";
+import { PgError, NotFound, TooMany } from "effect-drizzle/errors";
 
-export { PgError, TooMany, NotFound } from "./errors";
 export * from "drizzle-orm/pg-core";
 
 /*

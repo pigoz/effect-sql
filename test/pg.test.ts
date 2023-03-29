@@ -4,15 +4,13 @@ import * as Effect from "@effect/io/Effect";
 import { it, describe, expect } from "./helpers";
 import { cities } from "./pg.schema";
 import {
-  PgError,
-  NotFound,
-  TooMany,
   db,
   runQuery,
   runQueryExactlyOne,
   runQueryOne,
   runRawQuery,
 } from "effect-drizzle/pg";
+import { PgError, NotFound, TooMany } from "effect-drizzle/errors";
 
 describe("pg", () => {
   it.pgtransaction("runQuery ==0", () =>
