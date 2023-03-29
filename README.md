@@ -28,8 +28,8 @@ const post1 = runQuery(db.select.from(posts));
 //    ^ Effect<PgConnection, PgError, Post>
 
 const post2 = runQueryOne(db.select.from(posts));
-//    ^ Effect<PgConnection, PgError | RecordNotFound, Post>
+//    ^ Effect<PgConnection, PgError | NotFound, Post>
 
 const post3 = runQueryExactlyOne(db.select.from(posts));
-//    ^ Effect<PgConnection, PgError | RecordNotFound | RecordsTooMany, Post>
+//    ^ Effect<PgConnection, PgError | NotFound | TooMany, Post>
 ```

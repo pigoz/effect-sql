@@ -5,8 +5,8 @@ import { it, describe, expect } from "./helpers";
 import { cities } from "./pg.schema";
 import {
   PgError,
-  RecordNotFound,
-  RecordsTooMany,
+  NotFound,
+  TooMany,
   db,
   runQuery,
   runQueryExactlyOne,
@@ -37,7 +37,7 @@ describe("pg", () => {
     })
   );
 
-  it.pgtransaction("runQueryOne ==0: RecordNotFound", () =>
+  it.pgtransaction("runQueryOne ==0: NotFound", () =>
     Effect.gen(function* ($) {
       const res1 = yield* $(
         pipe(db.select().from(cities), runQueryOne, Effect.either)
@@ -45,7 +45,7 @@ describe("pg", () => {
 
       expect(res1).toEqual(
         E.left(
-          new RecordNotFound({
+          new NotFound({
             sql: 'select "id", "name" from "cities"',
             params: [],
           })
@@ -87,7 +87,7 @@ describe("pg", () => {
     })
   );
 
-  it.pgtransaction("runQueryExactlyOne ==0: RecordNotFound", () =>
+  it.pgtransaction("runQueryExactlyOne ==0: NotFound", () =>
     Effect.gen(function* ($) {
       const res1 = yield* $(
         pipe(db.select().from(cities), runQueryExactlyOne, Effect.either)
@@ -95,7 +95,7 @@ describe("pg", () => {
 
       expect(res1).toEqual(
         E.left(
-          new RecordNotFound({
+          new NotFound({
             sql: 'select "id", "name" from "cities"',
             params: [],
           })
@@ -135,7 +135,7 @@ describe("pg", () => {
 
       expect(res2).toEqual(
         E.left(
-          new RecordsTooMany({
+          new TooMany({
             sql: 'select "name" from "cities"',
             params: [],
           })
