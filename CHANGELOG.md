@@ -1,5 +1,11 @@
 # effect-drizzle
 
+## 0.0.8
+
+### Patch Changes
+
+- [`84fb700`](https://github.com/pigoz/effect-drizzle/commit/84fb7000f09356a57c56f6a7ad2121835273f7fe) Thanks [@pigoz](https://github.com/pigoz)! - chore(deps): move all to peer
+
 ## 0.0.7
 
 ### Patch Changes
