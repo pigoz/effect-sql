@@ -6,11 +6,12 @@ import * as Context from "@effect/data/Context";
 import * as Either from "@effect/data/Either";
 import * as REA from "@effect/data/ReadonlyArray";
 import { QueryPromise } from "drizzle-orm/query-promise";
-import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
 import { PgError, NotFound, TooMany } from "effect-drizzle/errors";
 
-export * from "drizzle-orm/pg-core";
+// https://github.com/drizzle-team/drizzle-orm/issues/163
+import { drizzle } from "drizzle-orm/node-postgres/index.js";
+export * from "drizzle-orm/pg-core/index.js";
 
 /*
  * Drizzle implements Lazy Promises in it's query builder interface.
