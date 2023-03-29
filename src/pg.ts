@@ -1,6 +1,5 @@
 import { LazyArg, pipe } from "@effect/data/Function";
 import * as Effect from "@effect/io/Effect";
-import * as Data from "@effect/data/Data";
 import * as Match from "@effect/match";
 import * as Exit from "@effect/io/Exit";
 import * as Context from "@effect/data/Context";
@@ -9,7 +8,9 @@ import * as REA from "@effect/data/ReadonlyArray";
 import { QueryPromise } from "drizzle-orm/query-promise";
 import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
+import { PgError, NotFound, TooMany } from "./errors";
 
+export { PgError, TooMany, NotFound } from "./errors";
 export * from "drizzle-orm/pg-core";
 
 /*
@@ -38,11 +39,6 @@ type PgBuilder<A> = QueryPromise<A> & {
   toSQL: () => { sql: string; params: unknown[] };
 };
 
-export class PgError extends Data.TaggedClass("PgError")<{
-  message: string;
-  code: string;
-}> {}
-
 export function runQuery<Builder extends PgBuilder<any>>(
   builder: Builder
 ): Effect.Effect<PgConnection, PgError, Awaited<Builder>> {
@@ -50,17 +46,10 @@ export function runQuery<Builder extends PgBuilder<any>>(
   return Effect.map(runRawQuery(sql.sql, sql.params), (_) => _ as any);
 }
 
-export class RecordNotFound extends Data.TaggedClass("RecordNotFound")<{
-  sql: string;
-  params: unknown[];
-}> {}
-
 export function runQueryOne<
   Builder extends PgBuilder<any>,
   Element extends Awaited<Builder> extends (infer X)[] ? X : never
->(
-  builder: Builder
-): Effect.Effect<PgConnection, PgError | RecordNotFound, Element> {
+>(builder: Builder): Effect.Effect<PgConnection, PgError | NotFound, Element> {
   return pipe(
     builder,
     runQuery,
@@ -68,28 +57,19 @@ export function runQueryOne<
       return pipe(
         x as Element[],
         REA.head,
-        Either.fromOption(() => new RecordNotFound({ ...builder.toSQL() })),
+        Either.fromOption(() => new NotFound({ ...builder.toSQL() })),
         Effect.fromEither
       );
     })
   );
 }
 
-export class RecordsTooMany extends Data.TaggedClass("RecordsTooMany")<{
-  sql: string;
-  params: unknown[];
-}> {}
-
 export function runQueryExactlyOne<
   Builder extends PgBuilder<any>,
   Element extends Awaited<Builder> extends (infer X)[] ? X : never
 >(
   builder: Builder
-): Effect.Effect<
-  PgConnection,
-  PgError | RecordNotFound | RecordsTooMany,
-  Element
-> {
+): Effect.Effect<PgConnection, PgError | NotFound | TooMany, Element> {
   return pipe(
     builder,
     runQuery,
@@ -98,12 +78,12 @@ export function runQueryExactlyOne<
         const [head, ...rest] = x as Element[];
 
         if (rest.length > 0) {
-          return Effect.fail(new RecordsTooMany({ ...builder.toSQL() }));
+          return Effect.fail(new TooMany({ ...builder.toSQL() }));
         }
 
         return pipe(
           head,
-          Either.fromNullable(() => new RecordNotFound({ ...builder.toSQL() })),
+          Either.fromNullable(() => new NotFound({ ...builder.toSQL() })),
           Effect.fromEither
         );
       })
@@ -126,10 +106,7 @@ export function runRawQuery(text: string, values?: unknown[]) {
             if (error) {
               resume(
                 Effect.fail(
-                  new PgError({
-                    code: error.code,
-                    message: error.message,
-                  })
+                  new PgError({ code: error.code, message: error.message })
                 )
               );
             } else {
