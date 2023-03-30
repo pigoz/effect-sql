@@ -1,5 +1,13 @@
 # effect-drizzle
 
+## 0.0.10
+
+### Patch Changes
+
+- [`d9dcc86`](https://github.com/pigoz/effect-drizzle/commit/d9dcc862a852db4aeb0a73b94b6f3a40c89a6264) Thanks [@pigoz](https://github.com/pigoz)! - add config, wrap migration code
+
+- [`8b7e30f`](https://github.com/pigoz/effect-drizzle/commit/8b7e30fcd8a24d7d31d7aed75c81b024c95d9465) Thanks [@pigoz](https://github.com/pigoz)! - fix(drizzle-orm): work around imports in mjs files
+
 ## 0.0.9
 
 ### Patch Changes
