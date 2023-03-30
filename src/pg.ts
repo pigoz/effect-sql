@@ -11,6 +11,8 @@ import { PgError, NotFound, TooMany } from "effect-drizzle/errors";
 
 // https://github.com/drizzle-team/drizzle-orm/issues/163
 import { drizzle } from "drizzle-orm/node-postgres/index.js";
+import { migrate as drizzleMigrate } from "drizzle-orm/node-postgres/migrator.js";
+
 export * from "drizzle-orm/pg-core/index.js";
 
 /*
@@ -207,4 +209,16 @@ export function transaction<R, E1, A>(
     );
 
   return Effect.acquireUseRelease(acquire, use, release);
+}
+
+export function migrate(migrationsFolder: string) {
+  return pipe(
+    PgConnection,
+    Effect.tap((conn) =>
+      Effect.promise(() => {
+        const client = drizzle(conn.queryable);
+        return drizzleMigrate(client, { migrationsFolder });
+      })
+    )
+  );
 }

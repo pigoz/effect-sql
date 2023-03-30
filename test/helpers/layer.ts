@@ -3,12 +3,8 @@ import * as Effect from "@effect/io/Effect";
 import * as Layer from "@effect/io/Layer";
 import { PostgreSqlContainer } from "testcontainers";
 import { Pool } from "pg";
-import { globSync } from "glob";
 import * as path from "path";
-import * as fs from "fs";
-import { PgConnection, PgConnectionPool } from "effect-drizzle/pg";
-
-export type TestLayer = PgConnection;
+import { PgConnection, PgConnectionPool, migrate } from "effect-drizzle/pg";
 
 const DrizzlePgConnectionTest = Layer.effect(
   PgConnection,
@@ -26,21 +22,18 @@ const DrizzlePgConnectionTest = Layer.effect(
 
       const pool = new Pool({ connectionString });
 
-      const migrations = globSync(
-        path.join(path.dirname(__dirname), "migrations/pg/*.sql")
-      );
-
-      const sql = migrations
-        .map((migration) => fs.readFileSync(migration, "utf8"))
-        .join("\n");
-
-      await pool.query(sql);
-
       return new PgConnectionPool(pool);
     })
   )
 );
 
+const DrizzlePgMigration = Layer.effectDiscard(
+  migrate(path.resolve(__dirname, "../migrations/pg"))
+);
+
+export type TestLayer = PgConnection;
+
 export const testLayer: Layer.Layer<never, never, TestLayer> = pipe(
-  DrizzlePgConnectionTest
+  DrizzlePgConnectionTest,
+  Layer.provideMerge(DrizzlePgMigration)
 );
