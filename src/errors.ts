@@ -11,6 +11,18 @@ export class PgError extends Data.TaggedClass("PgError")<{
   readonly [PgErrorTypeId] = PgErrorTypeId;
 }
 
+const PgMigrationErrorTypeId: unique symbol = Symbol.for(
+  "pigoz/effect-drizzle/PgMigrationError"
+);
+
+type PgMigrationErrorTypeId = typeof PgMigrationErrorTypeId;
+
+export class PgMigrationError extends Data.TaggedClass("PgMigrationError")<{
+  error: unknown;
+}> {
+  readonly [PgMigrationErrorTypeId] = PgMigrationErrorTypeId;
+}
+
 export const isPgError = (u: unknown): u is PgError =>
   typeof u === "object" && u != null && PgErrorTypeId in u;
 

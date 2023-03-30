@@ -5,6 +5,7 @@ import { PostgreSqlContainer } from "testcontainers";
 import { Pool } from "pg";
 import * as path from "path";
 import { PgConnection, PgConnectionPool, migrate } from "effect-drizzle/pg";
+import { PgMigrationError } from "effect-drizzle/errors";
 import * as Config from "@effect/io/Config";
 import * as ConfigProvider from "@effect/io/Config/Provider";
 import * as ConfigSecret from "@effect/io/Config/Secret";
@@ -55,5 +56,8 @@ const PgMigration = Layer.effectDiscard(
 
 export type TestLayer = PgConnection;
 
-export const testLayer: Layer.Layer<never, ConfigError.ConfigError, TestLayer> =
-  Layer.provideMerge(PgConnectionTest(fromTestContainer), PgMigration);
+export const testLayer: Layer.Layer<
+  never,
+  PgMigrationError | ConfigError.ConfigError,
+  TestLayer
+> = Layer.provideMerge(PgConnectionTest(fromTestContainer), PgMigration);

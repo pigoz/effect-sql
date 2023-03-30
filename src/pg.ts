@@ -7,7 +7,12 @@ import * as Either from "@effect/data/Either";
 import * as REA from "@effect/data/ReadonlyArray";
 import { QueryPromise } from "drizzle-orm/query-promise";
 import pg from "pg";
-import { PgError, NotFound, TooMany } from "effect-drizzle/errors";
+import {
+  PgError,
+  NotFound,
+  TooMany,
+  PgMigrationError,
+} from "effect-drizzle/errors";
 
 // https://github.com/drizzle-team/drizzle-orm/issues/163
 import { drizzle } from "drizzle-orm/node-postgres/index.js";
@@ -215,10 +220,13 @@ export function migrate(migrationsFolder: string) {
   return pipe(
     PgConnection,
     Effect.tap((conn) =>
-      Effect.promise(() => {
-        const client = drizzle(conn.queryable);
-        return drizzleMigrate(client, { migrationsFolder });
-      })
+      Effect.attemptCatchPromise(
+        () => {
+          const client = drizzle(conn.queryable);
+          return drizzleMigrate(client, { migrationsFolder });
+        },
+        (error) => new PgMigrationError({ error })
+      )
     )
   );
 }
