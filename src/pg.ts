@@ -220,7 +220,7 @@ export function migrate(migrationsFolder: string) {
   return pipe(
     PgConnection,
     Effect.tap((conn) =>
-      Effect.attemptCatchPromise(
+      Effect.tryCatchPromise(
         () => {
           const client = drizzle(conn.queryable);
           return drizzleMigrate(client, { migrationsFolder });

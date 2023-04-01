@@ -38,7 +38,9 @@ describe("pg", () => {
   it.pgtransaction("runQueryOne ==0: NotFound", () =>
     Effect.gen(function* ($) {
       const res1 = yield* $(
-        pipe(db.select().from(cities), runQueryOne, Effect.either)
+        db.select().from(cities),
+        runQueryOne,
+        Effect.either
       );
 
       expect(res1).toEqual(
@@ -54,7 +56,7 @@ describe("pg", () => {
 
   it.pgtransaction("runQueryOne ==1: finds record", () =>
     Effect.gen(function* ($) {
-      yield* $(runQuery(db.insert(cities).values({ name: "Foo" })));
+      yield* $(db.insert(cities).values({ name: "Foo" }), runQuery);
 
       const res2 = yield* $(
         pipe(
@@ -70,15 +72,13 @@ describe("pg", () => {
 
   it.pgtransaction("runQueryOne ==2: finds record", () =>
     Effect.gen(function* ($) {
-      yield* $(runQuery(db.insert(cities).values({ name: "Foo" })));
-      yield* $(runQuery(db.insert(cities).values({ name: "Bar" })));
+      yield* $(db.insert(cities).values({ name: "Foo" }), runQuery);
+      yield* $(db.insert(cities).values({ name: "Bar" }), runQuery);
 
       const res2 = yield* $(
-        pipe(
-          db.select({ name: cities.name }).from(cities),
-          runQueryOne,
-          Effect.either
-        )
+        db.select({ name: cities.name }).from(cities),
+        runQueryOne,
+        Effect.either
       );
 
       expect(res2).toEqual(E.right({ name: "Foo" }));
@@ -107,11 +107,9 @@ describe("pg", () => {
       yield* $(runQuery(db.insert(cities).values({ name: "Foo" })));
 
       const res2 = yield* $(
-        pipe(
-          db.select({ name: cities.name }).from(cities),
-          runQueryOne,
-          Effect.either
-        )
+        db.select({ name: cities.name }).from(cities),
+        runQueryOne,
+        Effect.either
       );
 
       expect(res2).toEqual(E.right({ name: "Foo" }));
@@ -124,11 +122,9 @@ describe("pg", () => {
       yield* $(runQuery(db.insert(cities).values({ name: "Bar" })));
 
       const res2 = yield* $(
-        pipe(
-          db.select({ name: cities.name }).from(cities),
-          runQueryExactlyOne,
-          Effect.either
-        )
+        db.select({ name: cities.name }).from(cities),
+        runQueryExactlyOne,
+        Effect.either
       );
 
       expect(res2).toEqual(
@@ -145,7 +141,9 @@ describe("pg", () => {
   it.pgtransaction("handles errors", () =>
     Effect.gen(function* ($) {
       const res = yield* $(
-        pipe("select * from dontexist;", runRawQuery, Effect.either)
+        "select * from dontexist;",
+        runRawQuery,
+        Effect.either
       );
 
       expect(res).toEqual(
