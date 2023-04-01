@@ -46,6 +46,45 @@ type PgBuilder<A> = QueryPromise<A> & {
   toSQL: () => { sql: string; params: unknown[] };
 };
 
+export function connect<R, E1, A>(self: Effect.Effect<R, E1, A>) {
+  const acquire: Effect.Effect<PgConnection, never, PgConnectionPoolClient> =
+    pipe(
+      PgConnection,
+      Effect.flatMap(
+        pipe(
+          Match.type<PgConnection>(),
+          Match.tag("PgConnectionPool", (_) =>
+            pipe(
+              Effect.promise(() => _.queryable.connect()),
+              Effect.map(
+                (queryable) => new PgConnectionPoolClient(queryable, 0)
+              )
+            )
+          ),
+          Match.tag("PgConnectionPoolClient", (_) => Effect.succeed(_)),
+          Match.exhaustive
+        )
+      )
+    );
+
+  const injectPoolClient = (_: PgConnection) =>
+    Effect.updateService(PgConnection, () => _);
+
+  const use = (conn: PgConnection) => pipe(self, injectPoolClient(conn));
+
+  const release = <E, A>(conn: PgConnectionPoolClient, exit: Exit.Exit<E, A>) =>
+    pipe(
+      exit,
+      Exit.match(
+        () => Effect.unit(),
+        () => Effect.sync(conn.queryable.release)
+      ),
+      injectPoolClient(conn)
+    );
+
+  return Effect.acquireUseRelease(acquire, use, release);
+}
+
 export function runQuery<Builder extends PgBuilder<any>>(
   builder: Builder
 ): Effect.Effect<PgConnection, PgError, Awaited<Builder>> {

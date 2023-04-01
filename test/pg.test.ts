@@ -4,6 +4,7 @@ import * as Effect from "@effect/io/Effect";
 import { it, describe, expect } from "./helpers";
 import { cities } from "./pg.schema";
 import {
+  connect,
   db,
   runQuery,
   runQueryExactlyOne,
@@ -160,10 +161,12 @@ describe("pg", () => {
   it.effect("create database", () =>
     Effect.gen(function* ($) {
       const res = yield* $(
-        Effect.all(
-          runRawQuery(`drop database if exists "foo"`),
-          runRawQuery(`create database "foo";`),
-          runRawQuery(`drop database "foo"`)
+        connect(
+          Effect.all(
+            runRawQuery(`drop database if exists "foo"`),
+            runRawQuery(`create database "foo";`),
+            runRawQuery(`drop database "foo"`)
+          )
         ),
         Effect.zipRight(Effect.succeed("ok")),
         Effect.either
