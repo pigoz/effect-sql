@@ -1,4 +1,4 @@
-import { LazyArg, pipe } from "@effect/data/Function";
+import { pipe } from "@effect/data/Function";
 import * as Effect from "@effect/io/Effect";
 import * as Match from "@effect/match";
 import * as Exit from "@effect/io/Exit";
@@ -166,7 +166,7 @@ export function runRawQuery(text: string, values?: unknown[]) {
 }
 
 export function transaction<R, E1, A>(
-  self: LazyArg<Effect.Effect<R, E1, A>>,
+  self: Effect.Effect<R, E1, A>,
   options?: { test?: boolean }
 ) {
   const matchSavepoint = <R1, R2, E1, E2, A1, A2>(
@@ -232,8 +232,7 @@ export function transaction<R, E1, A>(
     )
   );
 
-  const use = (conn: PgConnection) =>
-    pipe(Effect.suspend(self), injectPoolClient(conn));
+  const use = (conn: PgConnection) => pipe(self, injectPoolClient(conn));
 
   const release = <E, A>(conn: PgConnectionPoolClient, exit: Exit.Exit<E, A>) =>
     pipe(
