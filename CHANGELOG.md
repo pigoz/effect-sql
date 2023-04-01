@@ -1,5 +1,13 @@
 # effect-drizzle
 
+## 0.0.11
+
+### Patch Changes
+
+- [`83a9aa1`](https://github.com/pigoz/effect-drizzle/commit/83a9aa17a1da6f0311d961fa002cebc5dd493b84) Thanks [@pigoz](https://github.com/pigoz)! - add connect; make transaction not lazy
+
+- [`b338d07`](https://github.com/pigoz/effect-drizzle/commit/b338d07629e6bf7652db91b9ca4edfdba4daa6a2) Thanks [@pigoz](https://github.com/pigoz)! - chore(deps): update
+
 ## 0.0.10
 
 ### Patch Changes
