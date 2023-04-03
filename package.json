@@ -1,6 +1,6 @@
 {
   "name": "effect-drizzle",
-  "version": "0.0.12",
+  "version": "0.0.13",
   "description": "Integration of Drizzle into Effect",
   "publishConfig": {
     "access": "public",
