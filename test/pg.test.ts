@@ -10,6 +10,7 @@ import {
   runQueryExactlyOne,
   runQueryOne,
   runRawQuery,
+  transaction,
 } from "effect-drizzle/pg";
 import { PgError, NotFound, TooMany } from "effect-drizzle/errors";
 
@@ -155,6 +156,32 @@ describe("pg", () => {
           })
         )
       );
+    })
+  );
+
+  it.pgtransaction("transactions", () =>
+    Effect.gen(function* ($) {
+      const count = pipe(
+        db.select().from(cities),
+        runQuery,
+        Effect.map((_) => _.length)
+      );
+
+      const insert = pipe(db.insert(cities).values({ name: "foo" }), runQuery);
+
+      yield* $(insert, transaction);
+      expect(yield* $(count)).toEqual(1);
+
+      yield* $(insert, transaction);
+      expect(yield* $(count)).toEqual(2);
+
+      yield* $(
+        Effect.all(insert, Effect.fail("fail")),
+        transaction,
+        Effect.either
+      );
+
+      expect(yield* $(count)).toEqual(2);
     })
   );
 
