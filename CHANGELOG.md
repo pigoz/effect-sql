@@ -1,5 +1,11 @@
 # effect-drizzle
 
+## 0.0.12
+
+### Patch Changes
+
+- [`3bbde85`](https://github.com/pigoz/effect-drizzle/commit/3bbde8571a252917864ff303d44f4215f89a309b) Thanks [@pigoz](https://github.com/pigoz)! - feat(pg): improve config, transparently handle pool
+
 ## 0.0.11
 
 ### Patch Changes
