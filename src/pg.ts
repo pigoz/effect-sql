@@ -1,5 +1,6 @@
 import { pipe } from "@effect/data/Function";
 import * as Effect from "@effect/io/Effect";
+import * as Data from "@effect/data/Data";
 import * as Match from "@effect/match";
 import * as Exit from "@effect/io/Exit";
 import * as Context from "@effect/data/Context";
@@ -13,10 +14,13 @@ import {
   TooMany,
   PgMigrationError,
 } from "effect-drizzle/errors";
+import * as Config from "@effect/io/Config";
+import * as ConfigSecret from "@effect/io/Config/Secret";
 
 // https://github.com/drizzle-team/drizzle-orm/issues/163
 import { drizzle } from "drizzle-orm/node-postgres/index.js";
 import { migrate as drizzleMigrate } from "drizzle-orm/node-postgres/migrator.js";
+import { ConfigError } from "@effect/io/Config/Error";
 
 export * from "drizzle-orm/pg-core/index.js";
 
@@ -26,20 +30,48 @@ export * from "drizzle-orm/pg-core/index.js";
  */
 export const db = drizzle(null as any);
 
-export class PgConnectionPool {
-  readonly _tag = "PgConnectionPool";
-  constructor(readonly queryable: pg.Pool, readonly savepoint: number = 0) {}
+const pgConnectionPoolConfig = Config.all({
+  databaseUrl: Config.secret("DATABASE_URL"),
+});
+
+type PgConnectionPoolConfig = typeof pgConnectionPoolConfig;
+
+export interface PgConnectionPool extends Data.Case {
+  readonly _tag: "PgConnectionPool";
+  readonly queryable: pg.Pool;
 }
 
-export class PgConnectionPoolClient {
-  readonly _tag = "PgConnectionPoolClient";
-  constructor(
-    readonly queryable: pg.PoolClient,
-    readonly savepoint: number = 0
-  ) {}
+export function PgConnectionPoolService(
+  config: PgConnectionPoolConfig = pgConnectionPoolConfig
+): Effect.Effect<never, ConfigError, PgConnectionPool> {
+  return Effect.map(Effect.config(config), ({ databaseUrl }) => {
+    const pool = new pg.Pool({
+      connectionString: ConfigSecret.value(databaseUrl),
+    });
+
+    // don't let a pg restart kill your app
+    // XXX hook into effect logging
+    pool.on("error", (err) => console.error(err));
+
+    return Data.case<PgConnectionPool>()({
+      _tag: "PgConnectionPool",
+      queryable: pool,
+    });
+  });
 }
+
+interface PgConnectionPoolClient extends Data.Case {
+  readonly _tag: "PgConnectionPoolClient";
+  readonly queryable: pg.PoolClient;
+  readonly savepoint: number;
+}
+
+const PgConnectionPoolClientService = Data.tagged<PgConnectionPoolClient>(
+  "PgConnectionPoolClient"
+);
 
 export type PgConnection = PgConnectionPool | PgConnectionPoolClient;
+
 export const PgConnection = Context.Tag<PgConnection>("PgConnection");
 
 type PgBuilder<A> = QueryPromise<A> & {
@@ -56,8 +88,8 @@ export function connect<R, E1, A>(self: Effect.Effect<R, E1, A>) {
           Match.tag("PgConnectionPool", (_) =>
             pipe(
               Effect.promise(() => _.queryable.connect()),
-              Effect.map(
-                (queryable) => new PgConnectionPoolClient(queryable, 0)
+              Effect.map((queryable) =>
+                PgConnectionPoolClientService({ queryable, savepoint: 0 })
               )
             )
           ),
@@ -175,7 +207,7 @@ export function transaction<R, E1, A>(
   ): Effect.Effect<PgConnection | R1 | R2, E1 | E2, A1 | A2> =>
     Effect.gen(function* ($) {
       const x = yield* $(PgConnection);
-      return x.savepoint > 0
+      return x._tag === "PgConnectionPoolClient" && x.savepoint > 0
         ? yield* $(onPositive(`savepoint_${x.savepoint}`))
         : yield* $(onZero());
     });
@@ -205,13 +237,18 @@ export function transaction<R, E1, A>(
             pipe(
               // XXX: remove promise
               Effect.promise(() => _.queryable.connect()),
-              Effect.map(
-                (queryable) => new PgConnectionPoolClient(queryable, 0)
+              Effect.map((queryable) =>
+                PgConnectionPoolClientService({ queryable, savepoint: 0 })
               )
             )
           ),
           Match.tag("PgConnectionPoolClient", (_) =>
-            Effect.succeed({ ..._, savepoint: _.savepoint + 1 })
+            Effect.succeed(
+              PgConnectionPoolClientService({
+                queryable: _.queryable,
+                savepoint: _.savepoint + 1,
+              })
+            )
           ),
           Match.exhaustive
         )
