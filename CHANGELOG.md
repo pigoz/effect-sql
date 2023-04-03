@@ -1,5 +1,11 @@
 # effect-drizzle
 
+## 0.0.13
+
+### Patch Changes
+
+- [`25866b6`](https://github.com/pigoz/effect-drizzle/commit/25866b60ca2b18b97c1dea6cf06962e7a4f94d04) Thanks [@pigoz](https://github.com/pigoz)! - chore(deps): update
+
 ## 0.0.12
 
 ### Patch Changes
