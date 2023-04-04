@@ -1,5 +1,11 @@
 # effect-drizzle
 
+## 0.0.14
+
+### Patch Changes
+
+- [#17](https://github.com/pigoz/effect-drizzle/pull/17) [`fc5b422`](https://github.com/pigoz/effect-drizzle/commit/fc5b42268da0649eadb2e1383ebf7d9c80ab9417) Thanks [@pigoz](https://github.com/pigoz)! - feat(pg): add databaseName, make effect scoped
+
 ## 0.0.13
 
 ### Patch Changes
