@@ -6,6 +6,8 @@ import * as Exit from "@effect/io/Exit";
 import * as Context from "@effect/data/Context";
 import * as Either from "@effect/data/Either";
 import * as REA from "@effect/data/ReadonlyArray";
+import * as Scope from "@effect/io/Scope";
+import * as Option from "@effect/data/Option";
 import { QueryPromise } from "drizzle-orm/query-promise";
 import pg from "pg";
 import {
@@ -32,6 +34,9 @@ export const db = drizzle(null as any);
 
 const pgConnectionPoolConfig = Config.all({
   databaseUrl: Config.secret("DATABASE_URL"),
+  // overrides the one in the URL, useful to send out of bound commands like
+  // drop database by connecting to i.e. template1
+  databaseName: Config.optional(Config.string("DATABASE_NAME")),
 });
 
 type PgConnectionPoolConfig = typeof pgConnectionPoolConfig;
@@ -39,25 +44,6 @@ type PgConnectionPoolConfig = typeof pgConnectionPoolConfig;
 export interface PgConnectionPool extends Data.Case {
   readonly _tag: "PgConnectionPool";
   readonly queryable: pg.Pool;
-}
-
-export function PgConnectionPoolService(
-  config: PgConnectionPoolConfig = pgConnectionPoolConfig
-): Effect.Effect<never, ConfigError, PgConnectionPool> {
-  return Effect.map(Effect.config(config), ({ databaseUrl }) => {
-    const pool = new pg.Pool({
-      connectionString: ConfigSecret.value(databaseUrl),
-    });
-
-    // don't let a pg restart kill your app
-    // XXX hook into effect logging
-    pool.on("error", (err) => console.error(err));
-
-    return Data.case<PgConnectionPool>()({
-      _tag: "PgConnectionPool",
-      queryable: pool,
-    });
-  });
 }
 
 interface PgConnectionPoolClient extends Data.Case {
@@ -77,6 +63,46 @@ export const PgConnection = Context.Tag<PgConnection>("PgConnection");
 type PgBuilder<A> = QueryPromise<A> & {
   toSQL: () => { sql: string; params: unknown[] };
 };
+
+export function PgConnectionPoolService(
+  config: PgConnectionPoolConfig = pgConnectionPoolConfig
+): Effect.Effect<Scope.Scope, ConfigError, PgConnectionPool> {
+  const acquire = Effect.map(
+    Effect.config(config),
+    ({ databaseUrl, databaseName }) => {
+      const connectionString = pipe(
+        Option.match(
+          databaseName,
+          () => databaseUrl,
+          (databaseName) => {
+            const uri = new URL(ConfigSecret.value(databaseUrl));
+            uri.pathname = databaseName;
+            return ConfigSecret.fromString(uri.toString());
+          }
+        ),
+        ConfigSecret.value
+      );
+
+      const pool = new pg.Pool({ connectionString });
+
+      // don't let a pg restart kill your app
+      // XXX hook into effect logging
+      pool.on("error", (err) => console.error(err));
+
+      return Data.case<PgConnectionPool>()({
+        _tag: "PgConnectionPool",
+        queryable: pool,
+      });
+    }
+  );
+
+  const release = (pool: PgConnectionPool) =>
+    Effect.async<never, never, void>((resume) =>
+      pool.queryable.end(() => resume(Effect.unit()))
+    );
+
+  return Effect.acquireRelease(acquire, release);
+}
 
 export function connect<R, E1, A>(self: Effect.Effect<R, E1, A>) {
   const acquire: Effect.Effect<PgConnection, never, PgConnectionPoolClient> =
