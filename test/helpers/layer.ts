@@ -1,6 +1,7 @@
 import { pipe } from "@effect/data/Function";
 import * as Effect from "@effect/io/Effect";
 import * as Layer from "@effect/io/Layer";
+import * as Option from "@effect/data/Option";
 import { PostgreSqlContainer } from "testcontainers";
 import * as path from "path";
 import {
@@ -27,6 +28,7 @@ export const testContainer = pipe(
   Effect.map((uri) =>
     Config.succeed({
       databaseUrl: ConfigSecret.fromString(uri),
+      databaseName: Option.none(),
     })
   )
 );
@@ -41,10 +43,10 @@ export const testLayer: Layer.Layer<
   never,
   PgMigrationError | ConfigError.ConfigError,
   TestLayer
-> = Layer.provideMerge(
-  Layer.effect(
+> = pipe(
+  Layer.scoped(
     PgConnection,
     Effect.flatMap(testContainer, PgConnectionPoolService)
   ),
-  PgMigration
+  Layer.provideMerge(PgMigration)
 );
