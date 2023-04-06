@@ -6,7 +6,8 @@ import { PostgreSqlContainer } from "testcontainers";
 import * as path from "path";
 import {
   PgConnection,
-  PgConnectionPoolService,
+  PgConnectionPoolScopedService,
+  PgMigrationLayer,
   migrate,
 } from "effect-drizzle/pg";
 import { PgMigrationError } from "effect-drizzle/errors";
@@ -33,10 +34,6 @@ export const testContainer = pipe(
   )
 );
 
-const PgMigration = Layer.effectDiscard(
-  migrate(path.resolve(__dirname, "../migrations/pg"))
-);
-
 export type TestLayer = PgConnection;
 
 export const testLayer: Layer.Layer<
@@ -46,7 +43,9 @@ export const testLayer: Layer.Layer<
 > = pipe(
   Layer.scoped(
     PgConnection,
-    Effect.flatMap(testContainer, PgConnectionPoolService)
+    Effect.flatMap(testContainer, PgConnectionPoolScopedService)
   ),
-  Layer.provideMerge(PgMigration)
+  Layer.provideMerge(
+    PgMigrationLayer(path.resolve(__dirname, "../migrations/pg"))
+  )
 );

@@ -1,5 +1,6 @@
 import { pipe } from "@effect/data/Function";
 import * as Effect from "@effect/io/Effect";
+import * as Layer from "@effect/io/Layer";
 import * as Data from "@effect/data/Data";
 import * as Match from "@effect/match";
 import * as Exit from "@effect/io/Exit";
@@ -64,7 +65,7 @@ type PgBuilder<A> = QueryPromise<A> & {
   toSQL: () => { sql: string; params: unknown[] };
 };
 
-export function PgConnectionPoolService(
+export function PgConnectionPoolScopedService(
   config: PgConnectionPoolConfig = pgConnectionPoolConfig
 ): Effect.Effect<Scope.Scope, ConfigError, PgConnectionPool> {
   const acquire = Effect.map(
@@ -102,6 +103,10 @@ export function PgConnectionPoolService(
     );
 
   return Effect.acquireRelease(acquire, release);
+}
+
+export function PgMigrationLayer(path: string) {
+  return Layer.effectDiscard(migrate(path));
 }
 
 export function connect<R, E1, A>(self: Effect.Effect<R, E1, A>) {
