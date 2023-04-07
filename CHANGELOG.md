@@ -1,5 +1,11 @@
 # effect-sql
 
+## 0.0.15
+
+### Patch Changes
+
+- [#19](https://github.com/pigoz/effect-sql/pull/19) [`4dcdfdd`](https://github.com/pigoz/effect-sql/commit/4dcdfddb01684b63628acb484ea0b23fea2bf3a9) Thanks [@pigoz](https://github.com/pigoz)! - kysely and json_agg support, rename to effect-sql
+
 ## 0.0.14
 
 ### Patch Changes
