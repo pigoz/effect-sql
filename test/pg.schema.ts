@@ -5,7 +5,7 @@ import {
   text,
   timestamp,
   varchar,
-} from "effect-drizzle/pg/schema";
+} from "effect-sql/pg/schema";
 
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),

@@ -12,7 +12,7 @@ import * as Config from "@effect/io/Config";
 import * as ConfigSecret from "@effect/io/Config/Secret";
 import { ConfigError } from "@effect/io/Config/Error";
 
-import { PgError, NotFound, TooMany } from "effect-drizzle/errors";
+import { PgError, NotFound, TooMany } from "effect-sql/errors";
 import { Compilable, InferResult } from "kysely";
 import pg from "pg";
 
