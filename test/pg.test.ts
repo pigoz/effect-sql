@@ -232,7 +232,7 @@ describe("pg", () => {
         pipe(
           db
             .insertInto("users")
-            .values({ full_name: fullName, phone: "+39012321" })
+            .values({ fullName: fullName, phone: "+39012321" })
             .returningAll(),
           runQueryExactlyOne
         );
@@ -241,7 +241,7 @@ describe("pg", () => {
         pipe(
           db
             .insertInto("visits")
-            .values({ city_id: city.id, user_id: user.id, value })
+            .values({ cityId: city.id, userId: user.id, value })
             .returningAll(),
           runQueryExactlyOne
         );
@@ -264,6 +264,8 @@ describe("pg", () => {
         )
       );
 
+      console.log(yield* $(db.selectFrom("users").selectAll(), runQuery));
+
       const manyToManySub = yield* $(
         db
           .selectFrom("users")
@@ -272,9 +274,9 @@ describe("pg", () => {
             jsonAgg(
               eb
                 .selectFrom("visits")
-                .leftJoin("cities", "cities.id", "visits.city_id")
+                .leftJoin("cities", "cities.id", "visits.cityId")
                 .select(["visits.value as count", "cities.name as cityName"])
-                .whereRef("visits.user_id", "=", "users.id")
+                .whereRef("visits.userId", "=", "users.id")
                 .orderBy("visits.value", "desc")
             ).as("visited")
           ),
