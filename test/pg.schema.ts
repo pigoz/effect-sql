@@ -5,16 +5,27 @@ import {
   text,
   timestamp,
   varchar,
-} from "effect-drizzle/pg";
+} from "effect-drizzle/pg/schema";
 
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
-  fullName: text("full_name").notNull(),
+  full_name: text("full_name").notNull(),
   phone: varchar("phone", { length: 20 }).notNull(),
   role: text("role").default("user").notNull(),
-  cityId: integer("city_id").references(() => cities.id),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  city_id: integer("city_id").references(() => cities.id),
+  created_at: timestamp("created_at").defaultNow().notNull(),
+  updated_at: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const visits = pgTable("visits", {
+  id: serial("id").primaryKey(),
+  value: integer("value").notNull(),
+  city_id: integer("city_id")
+    .references(() => cities.id)
+    .notNull(),
+  user_id: integer("user_id")
+    .references(() => users.id)
+    .notNull(),
 });
 
 export const cities = pgTable("cities", {

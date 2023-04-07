@@ -2,10 +2,8 @@ import { pipe } from "@effect/data/Function";
 import * as E from "@effect/data/Either";
 import * as Effect from "@effect/io/Effect";
 import { it, describe, expect } from "./helpers";
-import { cities } from "./pg.schema";
 import {
   connect,
-  db,
   runQuery,
   runQueryExactlyOne,
   runQueryOne,
@@ -13,15 +11,17 @@ import {
   transaction,
 } from "effect-drizzle/pg";
 import { PgError, NotFound, TooMany } from "effect-drizzle/errors";
+import { City, User, db } from "./pg.dsl";
+import { jsonAgg } from "effect-drizzle/pg/utils";
 
 describe("pg", () => {
   it.pgtransaction("runQuery ==0", () =>
     Effect.gen(function* ($) {
-      const query = runQuery(db.select().from(cities));
+      const query = runQuery(db.selectFrom("cities"));
       expect((yield* $(query)).length).toEqual(0);
 
-      yield* $(runQuery(db.insert(cities).values({ name: "Foo" })));
-      yield* $(runQuery(db.insert(cities).values({ name: "Bar" })));
+      yield* $(runQuery(db.insertInto("cities").values({ name: "Foo" })));
+      yield* $(runQuery(db.insertInto("cities").values({ name: "Bar" })));
 
       expect((yield* $(query)).length).toEqual(2);
     })
@@ -29,10 +29,10 @@ describe("pg", () => {
 
   it.pgtransaction("runQuery ==2", () =>
     Effect.gen(function* ($) {
-      yield* $(runQuery(db.insert(cities).values({ name: "Foo" })));
-      yield* $(runQuery(db.insert(cities).values({ name: "Bar" })));
+      yield* $(runQuery(db.insertInto("cities").values({ name: "Foo" })));
+      yield* $(runQuery(db.insertInto("cities").values({ name: "Bar" })));
 
-      const query = runQuery(db.select().from(cities));
+      const query = runQuery(db.selectFrom("cities"));
       expect((yield* $(query)).length).toEqual(2);
     })
   );
@@ -40,7 +40,7 @@ describe("pg", () => {
   it.pgtransaction("runQueryOne ==0: NotFound", () =>
     Effect.gen(function* ($) {
       const res1 = yield* $(
-        db.select().from(cities),
+        db.selectFrom("cities"),
         runQueryOne,
         Effect.either
       );
@@ -48,8 +48,8 @@ describe("pg", () => {
       expect(res1).toEqual(
         E.left(
           new NotFound({
-            sql: 'select "id", "name" from "cities"',
-            params: [],
+            sql: 'select from "cities"',
+            parameters: [],
           })
         )
       );
@@ -58,14 +58,12 @@ describe("pg", () => {
 
   it.pgtransaction("runQueryOne ==1: finds record", () =>
     Effect.gen(function* ($) {
-      yield* $(db.insert(cities).values({ name: "Foo" }), runQuery);
+      yield* $(db.insertInto("cities").values({ name: "Foo" }), runQuery);
 
       const res2 = yield* $(
-        pipe(
-          db.select({ name: cities.name }).from(cities),
-          runQueryOne,
-          Effect.either
-        )
+        db.selectFrom("cities").select("name"),
+        runQueryOne,
+        Effect.either
       );
 
       expect(res2).toEqual(E.right({ name: "Foo" }));
@@ -74,11 +72,11 @@ describe("pg", () => {
 
   it.pgtransaction("runQueryOne ==2: finds record", () =>
     Effect.gen(function* ($) {
-      yield* $(db.insert(cities).values({ name: "Foo" }), runQuery);
-      yield* $(db.insert(cities).values({ name: "Bar" }), runQuery);
+      yield* $(db.insertInto("cities").values({ name: "Foo" }), runQuery);
+      yield* $(db.insertInto("cities").values({ name: "Bar" }), runQuery);
 
       const res2 = yield* $(
-        db.select({ name: cities.name }).from(cities),
+        db.selectFrom("cities").select("name"),
         runQueryOne,
         Effect.either
       );
@@ -90,14 +88,16 @@ describe("pg", () => {
   it.pgtransaction("runQueryExactlyOne ==0: NotFound", () =>
     Effect.gen(function* ($) {
       const res1 = yield* $(
-        pipe(db.select().from(cities), runQueryExactlyOne, Effect.either)
+        db.selectFrom("cities"),
+        runQueryExactlyOne,
+        Effect.either
       );
 
       expect(res1).toEqual(
         E.left(
           new NotFound({
-            sql: 'select "id", "name" from "cities"',
-            params: [],
+            sql: 'select from "cities"',
+            parameters: [],
           })
         )
       );
@@ -106,11 +106,11 @@ describe("pg", () => {
 
   it.pgtransaction("runQueryExactlyOne ==1: finds record", () =>
     Effect.gen(function* ($) {
-      yield* $(runQuery(db.insert(cities).values({ name: "Foo" })));
+      yield* $(runQuery(db.insertInto("cities").values({ name: "Foo" })));
 
       const res2 = yield* $(
-        db.select({ name: cities.name }).from(cities),
-        runQueryOne,
+        db.selectFrom("cities").select("name"),
+        runQueryExactlyOne,
         Effect.either
       );
 
@@ -120,11 +120,11 @@ describe("pg", () => {
 
   it.pgtransaction("runQueryExactlyOne ==2: finds record", () =>
     Effect.gen(function* ($) {
-      yield* $(runQuery(db.insert(cities).values({ name: "Foo" })));
-      yield* $(runQuery(db.insert(cities).values({ name: "Bar" })));
+      yield* $(runQuery(db.insertInto("cities").values({ name: "Foo" })));
+      yield* $(runQuery(db.insertInto("cities").values({ name: "Bar" })));
 
       const res2 = yield* $(
-        db.select({ name: cities.name }).from(cities),
+        db.selectFrom("cities").select("name"),
         runQueryExactlyOne,
         Effect.either
       );
@@ -133,7 +133,7 @@ describe("pg", () => {
         E.left(
           new TooMany({
             sql: 'select "name" from "cities"',
-            params: [],
+            parameters: [],
           })
         )
       );
@@ -162,12 +162,15 @@ describe("pg", () => {
   it.pgtransaction("transactions", () =>
     Effect.gen(function* ($) {
       const count = pipe(
-        db.select().from(cities),
+        db.selectFrom("cities"),
         runQuery,
         Effect.map((_) => _.length)
       );
 
-      const insert = pipe(db.insert(cities).values({ name: "foo" }), runQuery);
+      const insert = pipe(
+        db.insertInto("cities").values({ name: "foo" }),
+        runQuery
+      );
 
       yield* $(insert, transaction);
       expect(yield* $(count)).toEqual(1);
@@ -200,6 +203,89 @@ describe("pg", () => {
       );
 
       expect(res).toEqual(E.right("ok"));
+    })
+  );
+
+  it.pgtransaction("respects case", () =>
+    Effect.gen(function* ($) {
+      yield* $(db.insertInto("cities").values({ name: "Foo" }), runQuery);
+
+      const res2 = yield* $(
+        db.selectFrom("cities").select("name as cityName"),
+        runQueryOne,
+        Effect.either
+      );
+
+      expect(res2).toEqual(E.right({ cityName: "Foo" }));
+    })
+  );
+
+  it.pgtransaction("json_agg", () =>
+    Effect.gen(function* ($) {
+      const insertCity = (name: string) =>
+        pipe(
+          db.insertInto("cities").values({ name }).returningAll(),
+          runQueryExactlyOne
+        );
+
+      const insertUser = (fullName: string) =>
+        pipe(
+          db
+            .insertInto("users")
+            .values({ full_name: fullName, phone: "+39012321" })
+            .returningAll(),
+          runQueryExactlyOne
+        );
+
+      const insertVisits = (city: City, user: User, value: number) =>
+        pipe(
+          db
+            .insertInto("visits")
+            .values({ city_id: city.id, user_id: user.id, value })
+            .returningAll(),
+          runQueryExactlyOne
+        );
+
+      const factory = yield* $(
+        Effect.all({
+          tokyo: insertCity("Tokyo"),
+          kyoto: insertCity("Kyoto"),
+          osaka: insertCity("Osaka"),
+          haruhi: insertUser("Haruhi"),
+          nagato: insertUser("Nagato"),
+        }),
+        Effect.tap((_) =>
+          Effect.all(
+            insertVisits(_.kyoto, _.haruhi, 12),
+            insertVisits(_.tokyo, _.haruhi, 17),
+            insertVisits(_.osaka, _.haruhi, 10),
+            insertVisits(_.tokyo, _.nagato, 9999)
+          )
+        )
+      );
+
+      const manyToManySub = yield* $(
+        db
+          .selectFrom("users")
+          .selectAll()
+          .select((eb) =>
+            jsonAgg(
+              eb
+                .selectFrom("visits")
+                .leftJoin("cities", "cities.id", "visits.city_id")
+                .select(["visits.value as count", "cities.name as cityName"])
+                .whereRef("visits.user_id", "=", "users.id")
+                .orderBy("visits.value", "desc")
+            ).as("visited")
+          ),
+        runQuery
+      );
+
+      expect(manyToManySub[0]?.id).toEqual(factory.haruhi.id);
+      expect(manyToManySub[0]?.visited.length).toEqual(3);
+      expect(manyToManySub[0]?.visited[0]?.cityName).toEqual(
+        factory.tokyo.name
+      );
     })
   );
 });

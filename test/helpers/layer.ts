@@ -4,16 +4,12 @@ import * as Layer from "@effect/io/Layer";
 import * as Option from "@effect/data/Option";
 import { PostgreSqlContainer } from "testcontainers";
 import * as path from "path";
-import {
-  PgConnection,
-  PgConnectionPoolScopedService,
-  PgMigrationLayer,
-  migrate,
-} from "effect-drizzle/pg";
+import { PgConnection, PgConnectionPoolScopedService } from "effect-drizzle/pg";
 import { PgMigrationError } from "effect-drizzle/errors";
 import * as Config from "@effect/io/Config";
 import * as ConfigSecret from "@effect/io/Config/Secret";
 import * as ConfigError from "@effect/io/Config/Error";
+import { PgMigrationLayer } from "effect-drizzle/pg/schema";
 
 export const testContainer = pipe(
   Effect.promise(async () => {

@@ -5,8 +5,8 @@ const PgErrorTypeId: unique symbol = Symbol.for(PgErrorSymbolKey);
 type PgErrorTypeId = typeof PgErrorTypeId;
 
 export class PgError extends Data.TaggedClass("PgError")<{
-  code: string;
-  message: string;
+  readonly code: string;
+  readonly message: string;
 }> {
   readonly [PgErrorTypeId] = PgErrorTypeId;
 }
@@ -18,7 +18,7 @@ const PgMigrationErrorTypeId: unique symbol = Symbol.for(
 type PgMigrationErrorTypeId = typeof PgMigrationErrorTypeId;
 
 export class PgMigrationError extends Data.TaggedClass("PgMigrationError")<{
-  error: unknown;
+  readonly error: unknown;
 }> {
   readonly [PgMigrationErrorTypeId] = PgMigrationErrorTypeId;
 }
@@ -31,8 +31,8 @@ const NotFoundTypeId: unique symbol = Symbol.for(NotFoundSymbolKey);
 type NotFoundTypeId = typeof NotFoundTypeId;
 
 export class NotFound extends Data.TaggedClass("NotFound")<{
-  sql: string;
-  params: unknown[];
+  readonly sql: string;
+  readonly parameters: readonly unknown[];
 }> {
   readonly [NotFoundTypeId] = NotFoundTypeId;
 }
@@ -45,8 +45,8 @@ const TooManyTypeId: unique symbol = Symbol.for(TooManySymbolKey);
 type TooManyTypeId = typeof TooManyTypeId;
 
 export class TooMany extends Data.TaggedClass("TooMany")<{
-  sql: string;
-  params: unknown[];
+  readonly sql: string;
+  readonly parameters: readonly unknown[];
 }> {
   readonly [TooManyTypeId] = TooManyTypeId;
 }
