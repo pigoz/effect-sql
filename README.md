@@ -44,18 +44,18 @@ import {
   runQueryOne,
   runQueryExactlyOne,
   transaction
-} from "effect-sql/pg
+} from "effect-sql/pg";
 
-import { db } from './dsl.ts';
+import { db } from "./dsl.ts";
 
-const post1 = runQuery(db.selectFrom('posts'));
-//    ^ Effect<PgConnection, PgError, Post>
+const post1 = runQuery(db.selectFrom("posts"));
+//    ^ Effect<PgConnection, PgError, { id: number, name: string }>
 
-const post2 = runQueryOne(db.selectFrom('posts'));
-//    ^ Effect<PgConnection, PgError | NotFound, Post>
+const post2 = runQueryOne(db.selectFrom("posts"));
+//    ^ Effect<PgConnection, PgError | NotFound, { id: number, name: string }>
 
-const post3 = runQueryExactlyOne(db.selectFrom('posts'));
-//    ^ Effect<PgConnection, PgError | NotFound | TooMany, Post>
+const post3 = runQueryExactlyOne(db.selectFrom("posts"));
+//    ^ Effect<PgConnection, PgError | NotFound | TooMany, { id: number, name: string }>
 
 transaction(Effect.all(
   db.insertInto('posts').values({ title: 'Solvet saeclum' }),
