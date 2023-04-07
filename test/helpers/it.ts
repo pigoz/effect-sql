@@ -1,7 +1,7 @@
 import * as V from "vitest";
 import * as Effect from "@effect/io/Effect";
 import { TestLayer } from "./layer";
-import { transaction } from "effect-drizzle/pg";
+import { transaction } from "effect-sql/pg";
 import { runTestPromise } from "./setup.runtime";
 
 export type API = V.TestAPI<{}>;

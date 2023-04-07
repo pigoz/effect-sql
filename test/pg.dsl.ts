@@ -1,4 +1,4 @@
-import { InferDatabase, createQueryDsl } from "effect-drizzle/pg/schema";
+import { InferDatabase, createQueryDsl } from "effect-sql/pg/schema";
 import * as schema from "./pg.schema";
 import { Selectable } from "kysely";
 

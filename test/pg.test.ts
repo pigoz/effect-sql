@@ -9,10 +9,10 @@ import {
   runQueryOne,
   runRawQuery,
   transaction,
-} from "effect-drizzle/pg";
-import { PgError, NotFound, TooMany } from "effect-drizzle/errors";
+} from "effect-sql/pg";
+import { PgError, NotFound, TooMany } from "effect-sql/errors";
 import { City, User, db } from "./pg.dsl";
-import { jsonAgg } from "effect-drizzle/pg/utils";
+import { jsonAgg } from "effect-sql/pg/utils";
 
 describe("pg", () => {
   it.pgtransaction("runQuery ==0", () =>

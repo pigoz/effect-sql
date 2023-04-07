@@ -1,6 +1,6 @@
 import * as Data from "@effect/data/Data";
 
-const PgErrorSymbolKey = "pigoz/effect-drizzle/PgError";
+const PgErrorSymbolKey = "pigoz/effect-sql/PgError";
 const PgErrorTypeId: unique symbol = Symbol.for(PgErrorSymbolKey);
 type PgErrorTypeId = typeof PgErrorTypeId;
 
@@ -12,7 +12,7 @@ export class PgError extends Data.TaggedClass("PgError")<{
 }
 
 const PgMigrationErrorTypeId: unique symbol = Symbol.for(
-  "pigoz/effect-drizzle/PgMigrationError"
+  "pigoz/effect-sql/PgMigrationError"
 );
 
 type PgMigrationErrorTypeId = typeof PgMigrationErrorTypeId;
@@ -26,7 +26,7 @@ export class PgMigrationError extends Data.TaggedClass("PgMigrationError")<{
 export const isPgError = (u: unknown): u is PgError =>
   typeof u === "object" && u != null && PgErrorTypeId in u;
 
-const NotFoundSymbolKey = "pigoz/effect-drizzle/NotFound";
+const NotFoundSymbolKey = "pigoz/effect-sql/NotFound";
 const NotFoundTypeId: unique symbol = Symbol.for(NotFoundSymbolKey);
 type NotFoundTypeId = typeof NotFoundTypeId;
 
@@ -40,7 +40,7 @@ export class NotFound extends Data.TaggedClass("NotFound")<{
 export const isNotFound = (u: unknown): u is NotFound =>
   typeof u === "object" && u != null && NotFoundTypeId in u;
 
-const TooManySymbolKey = "pigoz/effect-drizzle/TooMany";
+const TooManySymbolKey = "pigoz/effect-sql/TooMany";
 const TooManyTypeId: unique symbol = Symbol.for(TooManySymbolKey);
 type TooManyTypeId = typeof TooManyTypeId;
 

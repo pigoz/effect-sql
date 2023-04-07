@@ -6,7 +6,7 @@ import { PgConnection } from ".";
 
 import { drizzle } from "drizzle-orm/node-postgres/driver.js";
 import { migrate as dmigrate } from "drizzle-orm/node-postgres/migrator.js";
-import { PgMigrationError } from "effect-drizzle/errors";
+import { PgMigrationError } from "effect-sql/errors";
 
 import {
   DummyDriver,

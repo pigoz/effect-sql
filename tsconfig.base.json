@@ -36,10 +36,10 @@
     "incremental": true,
     "removeComments": false,
     "paths": {
-      "effect-drizzle": ["./src/index.ts"],
-      "effect-drizzle/test/*": ["./test/*"],
-      "effect-drizzle/examples/*": ["./examples/*"],
-      "effect-drizzle/*": ["./src/*"]
+      "effect-sql": ["./src/index.ts"],
+      "effect-sql/test/*": ["./test/*"],
+      "effect-sql/examples/*": ["./examples/*"],
+      "effect-sql/*": ["./src/*"]
     },
     "plugins": [
       {

@@ -1,14 +1,14 @@
 {
-  "name": "effect-drizzle",
+  "name": "effect-sql",
   "version": "0.0.14",
-  "description": "Integration of Drizzle into Effect",
+  "description": "Use SQL Databases with Effect",
   "publishConfig": {
     "access": "public",
     "directory": "dist"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/pigoz/effect-drizzle.git"
+    "url": "https://github.com/pigoz/effect-sql.git"
   },
   "tags": [
     "typescript",
