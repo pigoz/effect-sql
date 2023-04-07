@@ -14,13 +14,14 @@ import {
   PostgresAdapter,
   PostgresQueryCompiler,
   PostgresIntrospector,
+  CamelCasePlugin,
 } from "kysely";
 
 import { Kyselify } from "drizzle-orm/kysely";
 import type { Table } from "drizzle-orm/table";
 export * from "drizzle-orm/pg-core/index.js";
 
-export type InferTable<T extends Table> = Kyselify<T>;
+export type InferTable<T extends Table> = ColumnsToCamelCase<Kyselify<T>>;
 
 export type InferDatabase<T extends Record<string, Table>> = {
   [K in keyof T]: InferTable<T[K]>;
@@ -31,10 +32,8 @@ type CamelCase<S extends string> =
     ? `${Lowercase<P1>}${Uppercase<P2>}${CamelCase<P3>}`
     : Lowercase<S>;
 
-export type KeysToCamelCase<T> = {
-  [K in keyof T as CamelCase<string & K>]: T[K] extends {}
-    ? KeysToCamelCase<T[K]>
-    : T[K];
+export type ColumnsToCamelCase<T> = {
+  [K in keyof T as CamelCase<string & K>]: T[K];
 };
 
 export function createQueryDsl<Database>() {
@@ -45,7 +44,7 @@ export function createQueryDsl<Database>() {
       createIntrospector: (db) => new PostgresIntrospector(db),
       createQueryCompiler: () => new PostgresQueryCompiler(),
     },
-    // plugins: [new CamelCasePlugin()],
+    plugins: [new CamelCasePlugin()],
   });
 }
 

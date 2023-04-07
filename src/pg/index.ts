@@ -13,7 +13,7 @@ import * as ConfigSecret from "@effect/io/Config/Secret";
 import { ConfigError } from "@effect/io/Config/Error";
 
 import { PgError, NotFound, TooMany } from "effect-sql/errors";
-import { Compilable, InferResult } from "kysely";
+import { CamelCasePlugin, Compilable, InferResult } from "kysely";
 import pg from "pg";
 
 /*
@@ -184,7 +184,24 @@ export function runQueryExactlyOne<
   );
 }
 
+class PgCamelResult extends CamelCasePlugin {
+  pgTransformResult<Data extends pg.QueryResult<pg.QueryResultRow>>(
+    data: Data
+  ): Data {
+    if (data.rows && Array.isArray(data.rows)) {
+      return {
+        ...data,
+        rows: data.rows.map((row) => this.mapRow(row)),
+      };
+    }
+
+    return data;
+  }
+}
+
 export function runRawQuery(sql: string, parameters?: readonly unknown[]) {
+  const camel = new PgCamelResult();
+
   return pipe(
     PgConnection,
     Effect.flatMap(({ queryable }) =>
@@ -202,7 +219,7 @@ export function runRawQuery(sql: string, parameters?: readonly unknown[]) {
                 )
               );
             } else {
-              resume(Effect.succeed(data.rows));
+              resume(Effect.succeed(camel.pgTransformResult(data).rows));
             }
           }
         );
