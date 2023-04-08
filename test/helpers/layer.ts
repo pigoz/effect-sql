@@ -1,7 +1,6 @@
 import { pipe } from "@effect/data/Function";
 import * as Effect from "@effect/io/Effect";
 import * as Layer from "@effect/io/Layer";
-import * as Option from "@effect/data/Option";
 import { PostgreSqlContainer } from "testcontainers";
 import * as path from "path";
 import { PgConnection, PgConnectionPoolScopedService } from "effect-sql/pg";
@@ -10,6 +9,8 @@ import * as Config from "@effect/io/Config";
 import * as ConfigSecret from "@effect/io/Config/Secret";
 import * as ConfigError from "@effect/io/Config/Error";
 import { PgMigrationLayer } from "effect-sql/pg/schema";
+import { QueryBuilder } from "effect-sql/query";
+import { db } from "../pg.dsl";
 
 export const testContainer = pipe(
   Effect.promise(async () => {
@@ -21,16 +22,10 @@ export const testContainer = pipe(
       .start();
 
     return container.getConnectionUri() + "?sslmode=disable";
-  }),
-  Effect.map((uri) =>
-    Config.succeed({
-      databaseUrl: ConfigSecret.fromString(uri),
-      databaseName: Option.none(),
-    })
-  )
+  })
 );
 
-export type TestLayer = PgConnection;
+export type TestLayer = PgConnection | QueryBuilder;
 
 export const testLayer: Layer.Layer<
   never,
@@ -39,8 +34,13 @@ export const testLayer: Layer.Layer<
 > = pipe(
   Layer.scoped(
     PgConnection,
-    Effect.flatMap(testContainer, PgConnectionPoolScopedService)
+    Effect.flatMap(testContainer, (uri) =>
+      PgConnectionPoolScopedService({
+        databaseUrl: Config.succeed(ConfigSecret.fromString(uri)),
+      })
+    )
   ),
+  Layer.provideMerge(Layer.succeed(QueryBuilder, db)),
   Layer.provideMerge(
     PgMigrationLayer(path.resolve(__dirname, "../migrations/pg"))
   )
