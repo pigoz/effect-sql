@@ -264,8 +264,6 @@ describe("pg", () => {
         )
       );
 
-      console.log(yield* $(db.selectFrom("users").selectAll(), runQuery));
-
       const manyToManySub = yield* $(
         db
           .selectFrom("users")

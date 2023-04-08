@@ -13,21 +13,27 @@ import * as ConfigSecret from "@effect/io/Config/Secret";
 import { ConfigError } from "@effect/io/Config/Error";
 
 import { PgError, NotFound, TooMany } from "effect-sql/errors";
-import { CamelCasePlugin, Compilable, InferResult } from "kysely";
+import { Compilable, InferResult, QueryResult, UnknownRow } from "kysely";
+
 import pg from "pg";
+import { QueryBuilder } from "effect-sql/query";
 
 /*
  * Drizzle implements Lazy Promises in it's query builder interface.
  * As long as execute() or then() isn't called, this will not hit the database.
  */
-const pgConnectionPoolConfig = Config.all({
+const defaultConfig = {
   databaseUrl: Config.secret("DATABASE_URL"),
   // overrides the one in the URL, useful to send out of bound commands like
   // drop database by connecting to i.e. template1
-  databaseName: Config.optional(Config.string("DATABASE_NAME")),
-});
+  databaseName: pipe(
+    Config.string("DATABASE_NAME"),
+    Config.optional,
+    Config.withDefault(Option.none())
+  ),
+};
 
-type PgConnectionPoolConfig = typeof pgConnectionPoolConfig;
+type PgConnectionPoolConfig = typeof defaultConfig;
 
 export interface PgConnectionPool extends Data.Case {
   readonly _tag: "PgConnectionPool";
@@ -49,10 +55,10 @@ export type PgConnection = PgConnectionPool | PgConnectionPoolClient;
 export const PgConnection = Context.Tag<PgConnection>("PgConnection");
 
 export function PgConnectionPoolScopedService(
-  config: PgConnectionPoolConfig = pgConnectionPoolConfig
+  config: Partial<PgConnectionPoolConfig>
 ): Effect.Effect<Scope.Scope, ConfigError, PgConnectionPool> {
   const acquire = Effect.map(
-    Effect.config(config),
+    Effect.config(Config.all({ ...defaultConfig, ...config })),
     ({ databaseUrl, databaseName }) => {
       const connectionString = pipe(
         Option.match(
@@ -99,7 +105,10 @@ export function connect<R, E1, A>(self: Effect.Effect<R, E1, A>) {
             pipe(
               Effect.promise(() => _.queryable.connect()),
               Effect.map((queryable) =>
-                PgConnectionPoolClientService({ queryable, savepoint: 0 })
+                PgConnectionPoolClientService({
+                  queryable,
+                  savepoint: 0,
+                })
               )
             )
           ),
@@ -129,9 +138,9 @@ export function connect<R, E1, A>(self: Effect.Effect<R, E1, A>) {
 
 export function runQuery<Builder extends Compilable<any>>(
   builder: Builder
-): Effect.Effect<PgConnection, PgError, InferResult<Builder>> {
+): Effect.Effect<PgConnection | QueryBuilder, PgError, InferResult<Builder>> {
   const sql = builder.compile();
-  return Effect.map(runRawQuery(sql.sql, sql.parameters), (_) => _ as any);
+  return Effect.map(runRawQuery(sql.sql, sql.parameters), (_) => _.rows as any);
 }
 
 function builderToError<Builder extends Compilable<any>>(builder: Builder) {
@@ -142,7 +151,9 @@ function builderToError<Builder extends Compilable<any>>(builder: Builder) {
 export function runQueryOne<
   Builder extends Compilable<any>,
   Element extends InferResult<Builder> extends (infer X)[] ? X : never
->(builder: Builder): Effect.Effect<PgConnection, PgError | NotFound, Element> {
+>(
+  builder: Builder
+): Effect.Effect<PgConnection | QueryBuilder, PgError | NotFound, Element> {
   return pipe(
     builder,
     runQuery,
@@ -162,7 +173,11 @@ export function runQueryExactlyOne<
   Element extends InferResult<Builder> extends (infer X)[] ? X : never
 >(
   builder: Builder
-): Effect.Effect<PgConnection, PgError | NotFound | TooMany, Element> {
+): Effect.Effect<
+  PgConnection | QueryBuilder,
+  PgError | NotFound | TooMany,
+  Element
+> {
   return pipe(
     builder,
     runQuery,
@@ -184,46 +199,50 @@ export function runQueryExactlyOne<
   );
 }
 
-class PgCamelResult extends CamelCasePlugin {
-  pgTransformResult<Data extends pg.QueryResult<pg.QueryResultRow>>(
-    data: Data
-  ): Data {
-    if (data.rows && Array.isArray(data.rows)) {
-      return {
-        ...data,
-        rows: data.rows.map((row) => this.mapRow(row)),
-      };
-    }
+function QueryResultFromPg<O>(result: pg.QueryResult): QueryResult<O> {
+  if (
+    result.command === "INSERT" ||
+    result.command === "UPDATE" ||
+    result.command === "DELETE"
+  ) {
+    const numAffectedRows = BigInt(result.rowCount);
 
-    return data;
+    return {
+      // TODO: remove.
+      numUpdatedOrDeletedRows: numAffectedRows,
+      numAffectedRows,
+      rows: result.rows ?? [],
+    };
   }
+
+  return {
+    rows: result.rows ?? [],
+  };
 }
 
 export function runRawQuery(sql: string, parameters?: readonly unknown[]) {
-  const camel = new PgCamelResult();
-
   return pipe(
-    PgConnection,
-    Effect.flatMap(({ queryable }) =>
-      Effect.async<never, PgError, unknown[]>((resume) => {
-        queryable.query(
-          { text: sql, values: parameters?.slice(0) },
-          (
-            error: pg.DatabaseError,
-            data: pg.QueryResult<pg.QueryResultRow>
-          ) => {
-            if (error) {
-              resume(
-                Effect.fail(
-                  new PgError({ code: error.code, message: error.message })
-                )
-              );
-            } else {
-              resume(Effect.succeed(camel.pgTransformResult(data).rows));
+    Effect.all([PgConnection, QueryBuilder]),
+    Effect.flatMap(([{ queryable }, builder]) =>
+      pipe(
+        Effect.async<never, PgError, QueryResult<UnknownRow>>((resume) => {
+          queryable.query(
+            { text: sql, values: parameters?.slice(0) },
+            (error: pg.DatabaseError, result: pg.QueryResult) => {
+              if (error) {
+                resume(
+                  Effect.fail(
+                    new PgError({ code: error.code, message: error.message })
+                  )
+                );
+              } else {
+                resume(Effect.succeed(QueryResultFromPg(result)));
+              }
             }
-          }
-        );
-      })
+          );
+        }),
+        Effect.map((result) => builder.transformResultSync(result))
+      )
     )
   );
 }
@@ -269,7 +288,10 @@ export function transaction<R, E1, A>(
               // XXX: remove promise
               Effect.promise(() => _.queryable.connect()),
               Effect.map((queryable) =>
-                PgConnectionPoolClientService({ queryable, savepoint: 0 })
+                PgConnectionPoolClientService({
+                  queryable,
+                  savepoint: 0,
+                })
               )
             )
           ),
