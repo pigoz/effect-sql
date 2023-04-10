@@ -11,16 +11,26 @@ export class PgError extends Data.TaggedClass("PgError")<{
   readonly [PgErrorTypeId] = PgErrorTypeId;
 }
 
-const PgMigrationErrorTypeId: unique symbol = Symbol.for(
-  "pigoz/effect-sql/PgMigrationError"
+const PoolErrorSymbolKey = "pigoz/effect-sql/PgError";
+const PoolErrorTypeId: unique symbol = Symbol.for(PoolErrorSymbolKey);
+type PoolErrorTypeId = typeof PoolErrorTypeId;
+
+export class PoolError extends Data.TaggedClass("PoolError")<{
+  readonly error: Error;
+}> {
+  readonly [PoolErrorTypeId] = PoolErrorTypeId;
+}
+
+const MigrationErrorTypeId: unique symbol = Symbol.for(
+  "pigoz/effect-sql/MigrationError"
 );
 
-type PgMigrationErrorTypeId = typeof PgMigrationErrorTypeId;
+type MigrationErrorTypeId = typeof MigrationErrorTypeId;
 
-export class PgMigrationError extends Data.TaggedClass("PgMigrationError")<{
+export class MigrationError extends Data.TaggedClass("MigrationError")<{
   readonly error: unknown;
 }> {
-  readonly [PgMigrationErrorTypeId] = PgMigrationErrorTypeId;
+  readonly [MigrationErrorTypeId] = MigrationErrorTypeId;
 }
 
 export const isPgError = (u: unknown): u is PgError =>

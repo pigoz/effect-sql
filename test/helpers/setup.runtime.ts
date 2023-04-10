@@ -22,11 +22,11 @@ const makeRuntime = <R, E, A>(layer: Layer.Layer<R, E, A>) =>
     };
   });
 
-export function runTestPromise<R extends TestLayer, E, A>(
+export function runTestPromise<R extends TestLayer | Scope.Scope, E, A>(
   self: Effect.Effect<R, E, A>
 ) {
   const r = (globalThis as any).runtime as Runtime.Runtime<TestLayer>;
-  return Runtime.runPromise(r)(self);
+  return Runtime.runPromise(r)(Effect.scoped(self));
 }
 
 const TIMEOUT = 30000;

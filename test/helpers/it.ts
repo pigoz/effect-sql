@@ -1,5 +1,6 @@
 import * as V from "vitest";
 import * as Effect from "@effect/io/Effect";
+import * as Scope from "@effect/io/Scope";
 import { TestLayer } from "./layer";
 import { transaction } from "effect-sql/pg";
 import { runTestPromise } from "./setup.runtime";
@@ -11,7 +12,7 @@ const it: API = V.it;
 export const effect = (() => {
   const f = <E, A>(
     name: string,
-    self: () => Effect.Effect<TestLayer, E, A>,
+    self: () => Effect.Effect<TestLayer | Scope.Scope, E, A>,
     timeout = 5_000
   ) => {
     return it(name, () => runTestPromise(Effect.suspend(self)), timeout);
@@ -19,7 +20,7 @@ export const effect = (() => {
   return Object.assign(f, {
     skip: <E, A>(
       name: string,
-      self: () => Effect.Effect<TestLayer, E, A>,
+      self: () => Effect.Effect<TestLayer | Scope.Scope, E, A>,
       timeout = 5_000
     ) => {
       return it.skip(name, () => runTestPromise(Effect.suspend(self)), timeout);
@@ -30,7 +31,7 @@ export const effect = (() => {
 export const pgtransaction = (() => {
   const f = <E, A>(
     name: string,
-    self: () => Effect.Effect<TestLayer, E, A>,
+    self: () => Effect.Effect<TestLayer | Scope.Scope, E, A>,
     timeout = 5_000
   ) => {
     return it(
@@ -42,7 +43,7 @@ export const pgtransaction = (() => {
   return Object.assign(f, {
     skip: <E, A>(
       name: string,
-      self: () => Effect.Effect<TestLayer, E, A>,
+      self: () => Effect.Effect<TestLayer | Scope.Scope, E, A>,
       timeout = 5_000
     ) => {
       return it.skip(
