@@ -3,8 +3,8 @@ import * as Effect from "@effect/io/Effect";
 import * as Layer from "@effect/io/Layer";
 import { PostgreSqlContainer } from "testcontainers";
 import * as path from "path";
-import { PgConnection, PgConnectionPoolScopedService } from "effect-sql/pg";
-import { PgMigrationError } from "effect-sql/errors";
+import { ConnectionPool, ConnectionPoolScopedService } from "effect-sql/pg";
+import { MigrationError, PoolError } from "effect-sql/errors";
 import * as Config from "@effect/io/Config";
 import * as ConfigSecret from "@effect/io/Config/Secret";
 import * as ConfigError from "@effect/io/Config/Error";
@@ -25,17 +25,17 @@ export const testContainer = pipe(
   })
 );
 
-export type TestLayer = PgConnection | QueryBuilder;
+export type TestLayer = ConnectionPool | QueryBuilder;
 
 export const testLayer: Layer.Layer<
   never,
-  PgMigrationError | ConfigError.ConfigError,
+  PoolError | MigrationError | ConfigError.ConfigError,
   TestLayer
 > = pipe(
   Layer.scoped(
-    PgConnection,
+    ConnectionPool,
     Effect.flatMap(testContainer, (uri) =>
-      PgConnectionPoolScopedService({
+      ConnectionPoolScopedService({
         databaseUrl: Config.succeed(ConfigSecret.fromString(uri)),
       })
     )

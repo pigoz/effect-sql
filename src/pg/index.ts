@@ -1,27 +1,45 @@
-import { pipe } from "@effect/data/Function";
+import { identity, pipe } from "@effect/data/Function";
 import * as Effect from "@effect/io/Effect";
 import * as Data from "@effect/data/Data";
-import * as Match from "@effect/match";
 import * as Exit from "@effect/io/Exit";
 import * as Context from "@effect/data/Context";
 import * as Either from "@effect/data/Either";
 import * as REA from "@effect/data/ReadonlyArray";
 import * as Scope from "@effect/io/Scope";
 import * as Option from "@effect/data/Option";
+import * as Duration from "@effect/data/Duration";
 import * as Config from "@effect/io/Config";
 import * as ConfigSecret from "@effect/io/Config/Secret";
+import * as Pool from "@effect/io/Pool";
 import { ConfigError } from "@effect/io/Config/Error";
 
-import { PgError, NotFound, TooMany } from "effect-sql/errors";
+import { PgError, NotFound, TooMany, PoolError } from "effect-sql/errors";
 import { Compilable, InferResult, QueryResult, UnknownRow } from "kysely";
 
 import pg from "pg";
 import { QueryBuilder } from "effect-sql/query";
 
-/*
- * Drizzle implements Lazy Promises in it's query builder interface.
- * As long as execute() or then() isn't called, this will not hit the database.
- */
+interface Client extends Data.Case {
+  _tag: "Client";
+  native: pg.Client;
+  savepoint: number;
+}
+
+const Client = Context.Tag<Client>(Symbol.for("pigoz/effect-sql/Client"));
+
+const makeClient = Data.tagged<Client>("Client");
+
+export interface ConnectionPool extends Data.Case {
+  _tag: "ConnectionPool";
+  pool: Pool.Pool<PoolError, Client>;
+}
+
+export const ConnectionPool = Context.Tag<ConnectionPool>(
+  Symbol.for("pigoz/effect-sql/ConnectionPool")
+);
+
+const makeConnectionPool = Data.tagged<ConnectionPool>("ConnectionPool");
+
 const defaultConfig = {
   databaseUrl: Config.secret("DATABASE_URL"),
   // overrides the one in the URL, useful to send out of bound commands like
@@ -33,34 +51,15 @@ const defaultConfig = {
   ),
 };
 
-type PgConnectionPoolConfig = typeof defaultConfig;
+type DatabaseConfig = typeof defaultConfig;
 
-export interface PgConnectionPool extends Data.Case {
-  readonly _tag: "PgConnectionPool";
-  readonly queryable: pg.Pool;
-}
-
-interface PgConnectionPoolClient extends Data.Case {
-  readonly _tag: "PgConnectionPoolClient";
-  readonly queryable: pg.PoolClient;
-  readonly savepoint: number;
-}
-
-const PgConnectionPoolClientService = Data.tagged<PgConnectionPoolClient>(
-  "PgConnectionPoolClient"
-);
-
-export type PgConnection = PgConnectionPool | PgConnectionPoolClient;
-
-export const PgConnection = Context.Tag<PgConnection>("PgConnection");
-
-export function PgConnectionPoolScopedService(
-  config: Partial<PgConnectionPoolConfig>
-): Effect.Effect<Scope.Scope, ConfigError, PgConnectionPool> {
-  const acquire = Effect.map(
+export function ConnectionPoolScopedService(
+  config: Partial<DatabaseConfig>
+): Effect.Effect<Scope.Scope, ConfigError, ConnectionPool> {
+  const getConnectionString = pipe(
     Effect.config(Config.all({ ...defaultConfig, ...config })),
-    ({ databaseUrl, databaseName }) => {
-      const connectionString = pipe(
+    Effect.map(({ databaseUrl, databaseName }) => {
+      return pipe(
         Option.match(
           databaseName,
           () => databaseUrl,
@@ -72,73 +71,67 @@ export function PgConnectionPoolScopedService(
         ),
         ConfigSecret.value
       );
-
-      const pool = new pg.Pool({ connectionString });
-
-      // don't let a pg restart kill your app
-      // XXX hook into effect logging
-      pool.on("error", (err) => console.error(err));
-
-      return Data.case<PgConnectionPool>()({
-        _tag: "PgConnectionPool",
-        queryable: pool,
-      });
-    }
+    })
   );
 
-  const release = (pool: PgConnectionPool) =>
-    Effect.async<never, never, void>((resume) =>
-      pool.queryable.end(() => resume(Effect.unit()))
+  const createConnectionPool = (connectionString: string) => {
+    const get = Effect.acquireRelease(
+      pipe(
+        Effect.sync(() => new pg.Client({ connectionString })),
+        Effect.tap((client) =>
+          Effect.tryCatchPromise(
+            () => client.connect(),
+            (error) => new PoolError({ error: error as Error })
+          )
+        ),
+        Effect.map((native) => makeClient({ native, savepoint: 0 }))
+      ),
+      (client) =>
+        pipe(
+          Effect.tryCatchPromise(
+            () => client.native.end(),
+            (error) => new PoolError({ error: error as Error })
+          ),
+          Effect.orDie
+        )
     );
+    return Pool.makeWithTTL(get, 1, 20, Duration.seconds(60));
+  };
 
-  return Effect.acquireRelease(acquire, release);
+  return pipe(
+    getConnectionString,
+    Effect.flatMap(createConnectionPool),
+    Effect.map((pool) => makeConnectionPool({ pool }))
+  );
 }
 
-export function connect<R, E1, A>(self: Effect.Effect<R, E1, A>) {
-  const acquire: Effect.Effect<PgConnection, never, PgConnectionPoolClient> =
-    pipe(
-      PgConnection,
-      Effect.flatMap(
-        pipe(
-          Match.type<PgConnection>(),
-          Match.tag("PgConnectionPool", (_) =>
-            pipe(
-              Effect.promise(() => _.queryable.connect()),
-              Effect.map((queryable) =>
-                PgConnectionPoolClientService({
-                  queryable,
-                  savepoint: 0,
-                })
-              )
-            )
-          ),
-          Match.tag("PgConnectionPoolClient", (_) => Effect.succeed(_)),
-          Match.exhaustive
-        )
-      )
-    );
+export function connect(
+  onExistingMapper: (client: Client) => Client = identity
+) {
+  return Effect.contextWithEffect((r: Context.Context<never>) =>
+    Option.match(
+      Context.getOption(r, Client),
+      () => Effect.flatMap(ConnectionPool, (service) => Pool.get(service.pool)),
+      (client) => Effect.succeed(onExistingMapper(client))
+    )
+  );
+}
 
-  const injectPoolClient = (_: PgConnection) =>
-    Effect.updateService(PgConnection, () => _);
-
-  const use = (conn: PgConnection) => pipe(self, injectPoolClient(conn));
-
-  const release = <E, A>(conn: PgConnectionPoolClient, exit: Exit.Exit<E, A>) =>
-    pipe(
-      exit,
-      Exit.match(
-        () => Effect.unit(),
-        () => Effect.sync(conn.queryable.release)
-      ),
-      injectPoolClient(conn)
-    );
-
-  return Effect.acquireUseRelease(acquire, use, release);
+export function withClient<R, E, A>(
+  self: Effect.Effect<R | Client, E, A>
+): Effect.Effect<R | ConnectionPool | Scope.Scope, PoolError | E, A> {
+  return Effect.flatMap(connect(), (client) =>
+    Effect.provideService(Client, client)(self)
+  );
 }
 
 export function runQuery<Builder extends Compilable<any>>(
   builder: Builder
-): Effect.Effect<PgConnection | QueryBuilder, PgError, InferResult<Builder>> {
+): Effect.Effect<
+  ConnectionPool | QueryBuilder | Scope.Scope,
+  PoolError | PgError,
+  InferResult<Builder>
+> {
   const sql = builder.compile();
   return Effect.map(runRawQuery(sql.sql, sql.parameters), (_) => _.rows as any);
 }
@@ -153,7 +146,11 @@ export function runQueryOne<
   Element extends InferResult<Builder> extends (infer X)[] ? X : never
 >(
   builder: Builder
-): Effect.Effect<PgConnection | QueryBuilder, PgError | NotFound, Element> {
+): Effect.Effect<
+  ConnectionPool | QueryBuilder | Scope.Scope,
+  PoolError | PgError | NotFound,
+  Element
+> {
   return pipe(
     builder,
     runQuery,
@@ -174,8 +171,8 @@ export function runQueryExactlyOne<
 >(
   builder: Builder
 ): Effect.Effect<
-  PgConnection | QueryBuilder,
-  PgError | NotFound | TooMany,
+  ConnectionPool | QueryBuilder | Scope.Scope,
+  PoolError | PgError | NotFound | TooMany,
   Element
 > {
   return pipe(
@@ -222,11 +219,11 @@ function QueryResultFromPg<O>(result: pg.QueryResult): QueryResult<O> {
 
 export function runRawQuery(sql: string, parameters?: readonly unknown[]) {
   return pipe(
-    Effect.all([PgConnection, QueryBuilder]),
-    Effect.flatMap(([{ queryable }, builder]) =>
+    Effect.all([Client, QueryBuilder]),
+    Effect.flatMap(([client, builder]) =>
       pipe(
         Effect.async<never, PgError, QueryResult<UnknownRow>>((resume) => {
-          queryable.query(
+          client.native.query(
             { text: sql, values: parameters?.slice(0) },
             (error: pg.DatabaseError, result: pg.QueryResult) => {
               if (error) {
@@ -243,26 +240,29 @@ export function runRawQuery(sql: string, parameters?: readonly unknown[]) {
         }),
         Effect.map((result) => builder.transformResultSync(result))
       )
-    )
+    ),
+    withClient
   );
 }
+
+const matchSavepoint = <R1, R2, E1, E2, A1, A2>(
+  onPositive: (name: string) => Effect.Effect<R1, E1, A1>,
+  onZero: () => Effect.Effect<R2, E2, A2>
+): Effect.Effect<Client | R1 | R2, E1 | E2, A1 | A2> =>
+  Effect.flatMap(
+    Client,
+    Effect.unified((client) =>
+      client.savepoint > 0
+        ? onPositive(`savepoint_${client.savepoint}`)
+        : onZero()
+    )
+  );
 
 export function transaction<R, E1, A>(
   self: Effect.Effect<R, E1, A>,
   options?: { test?: boolean }
 ) {
-  const matchSavepoint = <R1, R2, E1, E2, A1, A2>(
-    onPositive: (name: string) => Effect.Effect<R1, E1, A1>,
-    onZero: () => Effect.Effect<R2, E2, A2>
-  ): Effect.Effect<PgConnection | R1 | R2, E1 | E2, A1 | A2> =>
-    Effect.gen(function* ($) {
-      const x = yield* $(PgConnection);
-      return x._tag === "PgConnectionPoolClient" && x.savepoint > 0
-        ? yield* $(onPositive(`savepoint_${x.savepoint}`))
-        : yield* $(onZero());
-    });
-
-  const savepoint = matchSavepoint(
+  const start = matchSavepoint(
     (name) => runRawQuery(`SAVEPOINT ${name}`),
     () => runRawQuery(`START TRANSACTION`)
   );
@@ -277,68 +277,30 @@ export function transaction<R, E1, A>(
     () => runRawQuery(`COMMIT`)
   );
 
-  const connect: Effect.Effect<PgConnection, never, PgConnectionPoolClient> =
-    pipe(
-      PgConnection,
-      Effect.flatMap(
-        pipe(
-          Match.type<PgConnection>(),
-          Match.tag("PgConnectionPool", (_) =>
-            pipe(
-              // XXX: remove promise
-              Effect.promise(() => _.queryable.connect()),
-              Effect.map((queryable) =>
-                PgConnectionPoolClientService({
-                  queryable,
-                  savepoint: 0,
-                })
-              )
-            )
-          ),
-          Match.tag("PgConnectionPoolClient", (_) =>
-            Effect.succeed(
-              PgConnectionPoolClientService({
-                queryable: _.queryable,
-                savepoint: _.savepoint + 1,
-              })
-            )
-          ),
-          Match.exhaustive
-        )
-      )
-    );
-
-  const injectPoolClient = (_: PgConnection) =>
-    Effect.updateService(PgConnection, () => _);
+  const bumpSavepoint = (c: Client) =>
+    makeClient({ ...c, savepoint: c.savepoint + 1 });
 
   const acquire = pipe(
-    connect,
-    Effect.flatMap((conn) =>
-      pipe(
-        savepoint,
-        injectPoolClient(conn),
-        Effect.flatMap(() => Effect.succeed(conn))
+    connect(bumpSavepoint),
+    Effect.flatMap((client) =>
+      Effect.zipRight(
+        Effect.provideService(Client, client)(start),
+        Effect.succeed(client)
       )
     )
   );
 
-  const use = (conn: PgConnection) => pipe(self, injectPoolClient(conn));
+  const use = (client: Client) => Effect.provideService(Client, client)(self);
 
-  const release = <E, A>(conn: PgConnectionPoolClient, exit: Exit.Exit<E, A>) =>
+  const release = <E, A>(client: Client, exit: Exit.Exit<E, A>) =>
     pipe(
       exit,
       Exit.match(
         () => rollback,
         () => (options?.test ? rollback : commit)
       ),
-      Effect.flatMap(() =>
-        matchSavepoint(
-          () => Effect.unit(),
-          () => Effect.sync(conn.queryable.release)
-        )
-      ),
       Effect.orDie, // XXX handle error when rolling back?
-      injectPoolClient(conn)
+      Effect.provideService(Client, client)
     );
 
   return Effect.acquireUseRelease(acquire, use, release);
