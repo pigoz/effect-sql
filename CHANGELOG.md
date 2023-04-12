@@ -1,5 +1,11 @@
 # effect-sql
 
+## 0.0.16
+
+### Patch Changes
+
+- [#21](https://github.com/pigoz/effect-sql/pull/21) [`c1fe083`](https://github.com/pigoz/effect-sql/commit/c1fe08312d8b836bd27b6147bc79800e604ee328) Thanks [@pigoz](https://github.com/pigoz)! - make camelcase optional, use effect connection pool
+
 ## 0.0.15
 
 ### Patch Changes
