@@ -1,24 +1,15 @@
 import * as Data from "@effect/data/Data";
 
-const PgErrorSymbolKey = "pigoz/effect-sql/PgError";
-const PgErrorTypeId: unique symbol = Symbol.for(PgErrorSymbolKey);
-type PgErrorTypeId = typeof PgErrorTypeId;
+const DatabaseErrorSymbolKey = "pigoz/effect-sql/DatabaseError";
+const DatabaseErrorTypeId: unique symbol = Symbol.for(DatabaseErrorSymbolKey);
+type DatabaseErrorTypeId = typeof DatabaseErrorTypeId;
 
-export class PgError extends Data.TaggedClass("PgError")<{
-  readonly code: string;
+export class DatabaseError extends Data.TaggedClass("DatabaseError")<{
+  readonly code?: string;
+  readonly name?: string;
   readonly message: string;
 }> {
-  readonly [PgErrorTypeId] = PgErrorTypeId;
-}
-
-const PoolErrorSymbolKey = "pigoz/effect-sql/PgError";
-const PoolErrorTypeId: unique symbol = Symbol.for(PoolErrorSymbolKey);
-type PoolErrorTypeId = typeof PoolErrorTypeId;
-
-export class PoolError extends Data.TaggedClass("PoolError")<{
-  readonly error: Error;
-}> {
-  readonly [PoolErrorTypeId] = PoolErrorTypeId;
+  readonly [DatabaseErrorTypeId] = DatabaseErrorTypeId;
 }
 
 const MigrationErrorTypeId: unique symbol = Symbol.for(
@@ -33,8 +24,8 @@ export class MigrationError extends Data.TaggedClass("MigrationError")<{
   readonly [MigrationErrorTypeId] = MigrationErrorTypeId;
 }
 
-export const isPgError = (u: unknown): u is PgError =>
-  typeof u === "object" && u != null && PgErrorTypeId in u;
+export const isDatabaseError = (u: unknown): u is DatabaseError =>
+  typeof u === "object" && u != null && DatabaseErrorTypeId in u;
 
 const NotFoundSymbolKey = "pigoz/effect-sql/NotFound";
 const NotFoundTypeId: unique symbol = Symbol.for(NotFoundSymbolKey);

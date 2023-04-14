@@ -13,7 +13,7 @@ import * as ConfigSecret from "@effect/io/Config/Secret";
 import * as Pool from "@effect/io/Pool";
 import { ConfigError } from "@effect/io/Config/Error";
 
-import { PgError, NotFound, TooMany, PoolError } from "effect-sql/errors";
+import { DatabaseError, NotFound, TooMany } from "effect-sql/errors";
 import { Compilable, InferResult, QueryResult, UnknownRow } from "kysely";
 
 import pg from "pg";
@@ -31,7 +31,7 @@ const makeClient = Data.tagged<Client>("Client");
 
 export interface ConnectionPool extends Data.Case {
   _tag: "ConnectionPool";
-  pool: Pool.Pool<PoolError, Client>;
+  pool: Pool.Pool<DatabaseError, Client>;
 }
 
 export const ConnectionPool = Context.Tag<ConnectionPool>(
@@ -81,7 +81,11 @@ export function ConnectionPoolScopedService(
         Effect.tap((client) =>
           Effect.tryCatchPromise(
             () => client.connect(),
-            (error) => new PoolError({ error: error as Error })
+            (error) =>
+              new DatabaseError({
+                name: (error as Error).name,
+                message: (error as Error).message,
+              })
           )
         ),
         Effect.map((native) => makeClient({ native, savepoint: 0 }))
@@ -90,7 +94,11 @@ export function ConnectionPoolScopedService(
         pipe(
           Effect.tryCatchPromise(
             () => client.native.end(),
-            (error) => new PoolError({ error: error as Error })
+            (error) =>
+              new DatabaseError({
+                name: (error as Error).name,
+                message: (error as Error).message,
+              })
           ),
           Effect.orDie
         )
@@ -119,7 +127,7 @@ export function connect(
 
 export function withClient<R, E, A>(
   self: Effect.Effect<R | Client, E, A>
-): Effect.Effect<R | ConnectionPool | Scope.Scope, PoolError | E, A> {
+): Effect.Effect<R | ConnectionPool | Scope.Scope, DatabaseError | E, A> {
   return Effect.flatMap(connect(), (client) =>
     Effect.provideService(Client, client)(self)
   );
@@ -129,7 +137,7 @@ export function runQuery<Builder extends Compilable<any>>(
   builder: Builder
 ): Effect.Effect<
   ConnectionPool | QueryBuilder | Scope.Scope,
-  PoolError | PgError,
+  DatabaseError,
   InferResult<Builder>
 > {
   const sql = builder.compile();
@@ -148,7 +156,7 @@ export function runQueryOne<
   builder: Builder
 ): Effect.Effect<
   ConnectionPool | QueryBuilder | Scope.Scope,
-  PoolError | PgError | NotFound,
+  DatabaseError | NotFound,
   Element
 > {
   return pipe(
@@ -172,7 +180,7 @@ export function runQueryExactlyOne<
   builder: Builder
 ): Effect.Effect<
   ConnectionPool | QueryBuilder | Scope.Scope,
-  PoolError | PgError | NotFound | TooMany,
+  DatabaseError | NotFound | TooMany,
   Element
 > {
   return pipe(
@@ -222,22 +230,28 @@ export function runRawQuery(sql: string, parameters?: readonly unknown[]) {
     Effect.all([Client, QueryBuilder]),
     Effect.flatMap(([client, builder]) =>
       pipe(
-        Effect.async<never, PgError, QueryResult<UnknownRow>>((resume) => {
-          client.native.query(
-            { text: sql, values: parameters?.slice(0) },
-            (error: pg.DatabaseError, result: pg.QueryResult) => {
-              if (error) {
-                resume(
-                  Effect.fail(
-                    new PgError({ code: error.code, message: error.message })
-                  )
-                );
-              } else {
-                resume(Effect.succeed(QueryResultFromPg(result)));
+        Effect.async<never, DatabaseError, QueryResult<UnknownRow>>(
+          (resume) => {
+            client.native.query(
+              { text: sql, values: parameters?.slice(0) },
+              (error: pg.DatabaseError, result: pg.QueryResult) => {
+                if (error) {
+                  resume(
+                    Effect.fail(
+                      new DatabaseError({
+                        code: error.code,
+                        name: "QueryError",
+                        message: error.message,
+                      })
+                    )
+                  );
+                } else {
+                  resume(Effect.succeed(QueryResultFromPg(result)));
+                }
               }
-            }
-          );
-        }),
+            );
+          }
+        ),
         Effect.map((result) => builder.transformResultSync(result))
       )
     ),

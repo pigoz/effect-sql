@@ -10,7 +10,7 @@ import {
   transaction,
   withClient,
 } from "effect-sql/pg";
-import { PgError, NotFound, TooMany } from "effect-sql/errors";
+import { DatabaseError, NotFound, TooMany } from "effect-sql/errors";
 import { City, User, db } from "./pg.dsl";
 import { jsonAgg } from "effect-sql/pg/utils";
 
@@ -150,8 +150,9 @@ describe("pg", () => {
 
       expect(res).toEqual(
         E.left(
-          new PgError({
+          new DatabaseError({
             code: "42P01",
+            name: "QueryError",
             message: `relation "dontexist" does not exist`,
           })
         )
