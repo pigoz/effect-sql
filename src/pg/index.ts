@@ -58,20 +58,17 @@ export function ConnectionPoolScopedService(
 ): Effect.Effect<Scope.Scope, ConfigError, ConnectionPool> {
   const getConnectionString = pipe(
     Effect.config(Config.all({ ...defaultConfig, ...config })),
-    Effect.map(({ databaseUrl, databaseName }) => {
-      return pipe(
-        Option.match(
-          databaseName,
-          () => databaseUrl,
-          (databaseName) => {
-            const uri = new URL(ConfigSecret.value(databaseUrl));
-            uri.pathname = databaseName;
-            return ConfigSecret.fromString(uri.toString());
-          }
-        ),
-        ConfigSecret.value
-      );
-    })
+    Effect.map(({ databaseUrl, databaseName }) =>
+      Option.match(
+        databaseName,
+        () => ConfigSecret.value(databaseUrl),
+        (databaseName) => {
+          const uri = new URL(ConfigSecret.value(databaseUrl));
+          uri.pathname = databaseName;
+          return uri.toString();
+        }
+      )
+    )
   );
 
   const createConnectionPool = (connectionString: string) => {
