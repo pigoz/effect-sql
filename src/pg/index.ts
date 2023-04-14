@@ -71,35 +71,37 @@ export function ConnectionPoolScopedService(
     )
   );
 
-  const createConnectionPool = (connectionString: string) => {
-    const get = Effect.acquireRelease(
-      pipe(
-        Effect.sync(() => new pg.Client({ connectionString })),
-        Effect.tap((client) =>
-          Effect.tryCatchPromise(
-            () => client.connect(),
-            (error) =>
-              new DatabaseError({
-                name: (error as Error).name,
-                message: (error as Error).message,
-              })
-          )
-        ),
-        Effect.map((native) => makeClient({ native, savepoint: 0 }))
-      ),
-      (client) =>
-        pipe(
-          Effect.tryCatchPromise(
-            () => client.native.end(),
-            (error) =>
-              new DatabaseError({
-                name: (error as Error).name,
-                message: (error as Error).message,
-              })
-          ),
-          Effect.orDie
+  const pgErrorToEffect = (error?: Error) =>
+    error
+      ? Effect.fail(
+          new DatabaseError({
+            name: "ConnectionPoolError",
+            message: error.message,
+          })
         )
+      : Effect.unit();
+
+  const createConnectionPool = (connectionString: string) => {
+    const connect = pipe(
+      Effect.sync(() => new pg.Client({ connectionString })),
+      Effect.tap((client) =>
+        Effect.async<never, DatabaseError, void>((resume) =>
+          client.connect((error) => resume(pgErrorToEffect(error)))
+        )
+      ),
+      Effect.map((native) => makeClient({ native, savepoint: 0 }))
     );
+
+    const disconnect = (client: Client) =>
+      pipe(
+        Effect.async<never, DatabaseError, void>((resume) =>
+          client.native.end((error) => resume(pgErrorToEffect(error)))
+        ),
+        Effect.orDie
+      );
+
+    const get = Effect.acquireRelease(connect, disconnect);
+
     return Pool.makeWithTTL(get, 1, 20, Duration.seconds(60));
   };
 

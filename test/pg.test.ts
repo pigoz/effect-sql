@@ -1,8 +1,13 @@
 import { pipe } from "@effect/data/Function";
 import * as E from "@effect/data/Either";
 import * as Effect from "@effect/io/Effect";
+import * as Layer from "@effect/io/Layer";
+import * as Config from "@effect/io/Config";
+import * as ConfigSecret from "@effect/io/Config/Secret";
 import { it, describe, expect } from "./helpers";
 import {
+  ConnectionPool,
+  ConnectionPoolScopedService,
   runQuery,
   runQueryExactlyOne,
   runQueryOne,
@@ -140,7 +145,7 @@ describe("pg", () => {
     })
   );
 
-  it.pgtransaction("handles errors", () =>
+  it.pgtransaction("handle QueryError", () =>
     Effect.gen(function* ($) {
       const res = yield* $(
         "select * from dontexist;",
@@ -154,6 +159,33 @@ describe("pg", () => {
             code: "42P01",
             name: "QueryError",
             message: `relation "dontexist" does not exist`,
+          })
+        )
+      );
+    })
+  );
+
+  it.effect("handle PoolError", () =>
+    Effect.gen(function* ($) {
+      const res = yield* $(
+        db.selectFrom("cities"),
+        runQuery,
+        Effect.provideSomeLayer(
+          Layer.scoped(
+            ConnectionPool,
+            ConnectionPoolScopedService({
+              databaseUrl: Config.succeed(ConfigSecret.fromString("")),
+            })
+          )
+        ),
+        Effect.either
+      );
+
+      expect(res).toEqual(
+        E.left(
+          new DatabaseError({
+            name: "ConnectionPoolError",
+            message: `connect ECONNREFUSED ::1:5432`,
           })
         )
       );
