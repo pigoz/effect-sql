@@ -1,86 +1,49 @@
-import { Table } from "drizzle-orm";
-import { Kyselify } from "drizzle-orm/kysely";
+// XXX can I remove the dependency on these?
 import {
-  DummyDriver,
-  Kysely,
-  KyselyConfig,
-  KyselyPlugin,
-  PluginTransformResultArgs,
-  QueryResult,
-  UnknownRow,
+  Compilable as KyselyCompilable,
+  InferResult as KyselyInferResult,
 } from "kysely";
 
-import {
-  ColumnsToCamelCase,
-  SyncCamelCasePlugin,
-} from "effect-sql/query/camelcase";
-
-export interface SyncKyselyPlugin extends KyselyPlugin {
-  transformResultSync(
-    args: Omit<PluginTransformResultArgs, "queryId">
-  ): QueryResult<UnknownRow>;
+interface DrizzleCompilable<O> extends Promise<O> {
+  toSQL(): { sql: string; params: unknown[] };
 }
 
-type InferDatabaseFromSchema<T extends Record<string, Table>> = {
-  [K in keyof T]: Kyselify<T[K]>;
+type DrizzleInferResult<A extends DrizzleCompilable<any>> = Awaited<A>;
+
+export type Compilable<O> = KyselyCompilable<O> | DrizzleCompilable<O>;
+
+export type InferResult<X extends Compilable<any>> =
+  X extends KyselyCompilable<any>
+    ? KyselyInferResult<X>
+    : X extends DrizzleCompilable<any>
+    ? DrizzleInferResult<X>
+    : never;
+
+export type UnknownRow = {
+  [x: string]: unknown;
 };
 
-type CamelCase<T extends InferDatabaseFromSchema<Record<string, Table>>> = {
-  [K in keyof T]: ColumnsToCamelCase<T[K]>;
-};
+export interface QueryResult<T> {
+  rowCount?: bigint;
+  rows: T[];
+}
 
-export type InferDatabase<T extends QueryBuilderDsl<any, any, any>> =
-  T extends QueryBuilderDsl<any, any, infer A> ? A : never;
+interface Compiled {
+  readonly sql: string;
+  readonly parameters: readonly unknown[];
+}
 
-export interface QueryBuilderConfig {
-  useCamelCaseTransformer?: boolean;
+export function compile<O>(compilable: Compilable<O>): Compiled {
+  if ("toSQL" in compilable) {
+    // Drizzle
+    const compiled = compilable.toSQL();
+    return { sql: compiled.sql, parameters: compiled.params };
+  } else {
+    const compiled = compilable.compile();
+    return { sql: compiled.sql, parameters: compiled.parameters };
+  }
 }
 
 export interface TransformResultSync {
   transformResultSync(result: QueryResult<UnknownRow>): QueryResult<UnknownRow>;
-}
-
-export class QueryBuilderDsl<
-    T extends Record<string, Table>,
-    O extends QueryBuilderConfig,
-    Database = O["useCamelCaseTransformer"] extends true
-      ? CamelCase<InferDatabaseFromSchema<T>>
-      : InferDatabaseFromSchema<T>
-  >
-  extends Kysely<Database>
-  implements TransformResultSync
-{
-  readonly #plugins: readonly SyncKyselyPlugin[];
-
-  constructor(
-    config: {
-      schema: T;
-    } & Omit<KyselyConfig["dialect"], "createDriver"> &
-      O
-  ) {
-    const plugins: SyncKyselyPlugin[] = config.useCamelCaseTransformer
-      ? [new SyncCamelCasePlugin()]
-      : [];
-
-    super({
-      dialect: {
-        createAdapter: config.createAdapter,
-        createIntrospector: config.createIntrospector,
-        createQueryCompiler: config.createQueryCompiler,
-        createDriver: () => new DummyDriver(),
-      },
-      plugins,
-    });
-
-    this.#plugins = plugins;
-  }
-
-  transformResultSync(
-    result: PluginTransformResultArgs["result"]
-  ): QueryResult<UnknownRow> {
-    this.#plugins.forEach((plugin) => {
-      result = plugin.transformResultSync({ result });
-    });
-    return result;
-  }
 }

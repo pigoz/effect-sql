@@ -5,9 +5,9 @@ SQL Databases with Effect!
 This project is a mashup of a few fantastic libraries to handle SQL databases
 in TypeScript.
 
-  - [Kysely](https://github.com/kysely-org/kysely) as a Query Builder
   - [Drizzle](https://github.com/drizzle-team/drizzle-orm) for TypeScript-first
     schema declaration (and migrations!)
+  - [Kysely](https://github.com/kysely-org/kysely) as a Query Builder
 
   - Custom code to make the Effect experience as nice as possible:
     - Layer to manage the ConnectionPool
@@ -28,15 +28,17 @@ const posts = pgTable("posts", {
   id: serial("id").primaryKey(),
   name: text("title").notNull(),
 });
+```
 
+Using Kysely:
 
-// dsl.ts
-import { InferDatabase, createQueryDsl } from "effect-sql/pg/schema";
+```typescript
+// kysely.ts
+import { InferDatabase, createQueryDsl } from "effect-sql/pg/schema/kysely";
 import * as schema from "./schema.ts";
 
 interface Database extends InferDatabase<typeof schema> {}
 export const db = createQueryDsl<Database>();
-
 
 // app.ts
 import {
@@ -65,5 +67,8 @@ transaction(Effect.all(
   )),
 ))
 ```
+
+Using Drizzle as a Query Builder is possible, but currently not recommended as
+it doesn't correctly handle mapping of field names.
 
 [Please check the tests for more complete examples!](https://github.com/pigoz/effect-sql/tree/main/test)

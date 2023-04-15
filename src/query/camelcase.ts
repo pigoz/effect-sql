@@ -4,7 +4,8 @@ import {
   QueryResult,
   UnknownRow,
 } from "kysely";
-import { SyncKyselyPlugin } from "effect-sql/query";
+
+import { SyncKyselyPlugin } from "effect-sql/query/kysely";
 
 type CamelCase<S extends string> =
   S extends `${infer P1}_${infer P2}${infer P3}`

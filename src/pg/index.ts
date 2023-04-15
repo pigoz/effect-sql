@@ -12,10 +12,15 @@ import * as Config from "@effect/io/Config";
 import * as ConfigSecret from "@effect/io/Config/Secret";
 import * as Pool from "@effect/io/Pool";
 import { ConfigError } from "@effect/io/Config/Error";
-import { TransformResultSync } from "effect-sql/query";
+import { TransformResultSync, compile } from "effect-sql/query";
 
 import { DatabaseError, NotFound, TooMany } from "effect-sql/errors";
-import { Compilable, InferResult, QueryResult, UnknownRow } from "kysely";
+import {
+  Compilable,
+  InferResult,
+  QueryResult,
+  UnknownRow,
+} from "effect-sql/query";
 
 import pg from "pg";
 
@@ -145,12 +150,12 @@ export function runQuery<Builder extends Compilable<any>>(
   DatabaseError,
   InferResult<Builder>
 > {
-  const sql = builder.compile();
+  const sql = compile(builder);
   return Effect.map(runRawQuery(sql.sql, sql.parameters), (_) => _.rows as any);
 }
 
 function builderToError<Builder extends Compilable<any>>(builder: Builder) {
-  const compiled = builder.compile();
+  const compiled = compile(builder);
   return { sql: compiled.sql, parameters: compiled.parameters };
 }
 
@@ -209,28 +214,14 @@ export function runQueryExactlyOne<
   );
 }
 
-function QueryResultFromPg<O>(result: pg.QueryResult): QueryResult<O> {
-  if (
-    result.command === "INSERT" ||
-    result.command === "UPDATE" ||
-    result.command === "DELETE"
-  ) {
-    const numAffectedRows = BigInt(result.rowCount);
-
+export function runRawQuery(sql: string, parameters?: readonly unknown[]) {
+  function QueryResultFromPg<O>(result: pg.QueryResult): QueryResult<O> {
     return {
-      // TODO: remove.
-      numUpdatedOrDeletedRows: numAffectedRows,
-      numAffectedRows,
+      rowCount: result.rowCount === null ? undefined : BigInt(result.rowCount),
       rows: result.rows ?? [],
     };
   }
 
-  return {
-    rows: result.rows ?? [],
-  };
-}
-
-export function runRawQuery(sql: string, parameters?: readonly unknown[]) {
   return pipe(
     Client,
     Effect.flatMap((client) =>

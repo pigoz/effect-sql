@@ -16,37 +16,39 @@ import {
   connected,
 } from "effect-sql/pg";
 import { DatabaseError, NotFound, TooMany } from "effect-sql/errors";
-import { City, User, db } from "./pg.dsl";
-import { jsonAgg } from "effect-sql/pg/utils";
+import { db } from "./pg.drizzle.dsl";
+import { cities } from "./pg.schema";
+import { usingTestLayer } from "./helpers/layer";
 
-const select = db.selectFrom("cities");
-const selectName = db.selectFrom("cities").select("name");
-const insert = (name: string) => db.insertInto("cities").values({ name });
+usingTestLayer(db);
 
-describe("pg", () => {
+const selectFromCities = db.select().from(cities);
+const selectNameFromCities = db.select({ name: cities.name }).from(cities);
+const insertCity = (name: string) => db.insert(cities).values({ name });
+
+describe("pg – drizzle", () => {
   it.pgtransaction("runQuery ==0", () =>
     Effect.gen(function* ($) {
-      expect((yield* $(select, runQuery)).length).toEqual(0);
+      expect((yield* $(selectFromCities, runQuery)).length).toEqual(0);
     })
   );
 
   it.pgtransaction("runQuery ==2", () =>
     Effect.gen(function* ($) {
-      yield* $(insert("foo"), runQuery);
-      yield* $(insert("bar"), runQuery);
-
-      expect((yield* $(select, runQuery)).length).toEqual(2);
+      yield* $(insertCity("Foo"), runQuery);
+      yield* $(insertCity("Bar"), runQuery);
+      expect((yield* $(selectFromCities, runQuery)).length).toEqual(2);
     })
   );
 
   it.pgtransaction("runQueryOne ==0: NotFound", () =>
     Effect.gen(function* ($) {
-      const res1 = yield* $(select, runQueryOne, Effect.either);
+      const res1 = yield* $(selectFromCities, runQueryOne, Effect.either);
 
       expect(res1).toEqual(
         E.left(
           new NotFound({
-            sql: 'select from "cities"',
+            sql: 'select "id", "name" from "cities"',
             parameters: [],
           })
         )
@@ -56,32 +58,37 @@ describe("pg", () => {
 
   it.pgtransaction("runQueryOne ==1: finds record", () =>
     Effect.gen(function* ($) {
-      yield* $(insert("foo"), runQuery);
+      yield* $(insertCity("Foo"), runQuery);
 
-      const res2 = yield* $(selectName, runQueryOne, Effect.either);
-      expect(res2).toEqual(E.right({ name: "foo" }));
+      const res2 = yield* $(selectNameFromCities, runQueryOne, Effect.either);
+
+      expect(res2).toEqual(E.right({ name: "Foo" }));
     })
   );
 
   it.pgtransaction("runQueryOne ==2: finds record", () =>
     Effect.gen(function* ($) {
-      yield* $(insert("foo"), runQuery);
-      yield* $(insert("bar"), runQuery);
+      yield* $(insertCity("Foo"), runQuery);
+      yield* $(insertCity("Bar"), runQuery);
 
-      const res2 = yield* $(selectName, runQueryOne, Effect.either);
+      const res2 = yield* $(selectNameFromCities, runQueryOne, Effect.either);
 
-      expect(res2).toEqual(E.right({ name: "foo" }));
+      expect(res2).toEqual(E.right({ name: "Foo" }));
     })
   );
 
   it.pgtransaction("runQueryExactlyOne ==0: NotFound", () =>
     Effect.gen(function* ($) {
-      const res1 = yield* $(select, runQueryExactlyOne, Effect.either);
+      const res1 = yield* $(
+        selectFromCities,
+        runQueryExactlyOne,
+        Effect.either
+      );
 
       expect(res1).toEqual(
         E.left(
           new NotFound({
-            sql: 'select from "cities"',
+            sql: 'select "id", "name" from "cities"',
             parameters: [],
           })
         )
@@ -91,19 +98,28 @@ describe("pg", () => {
 
   it.pgtransaction("runQueryExactlyOne ==1: finds record", () =>
     Effect.gen(function* ($) {
-      yield* $(insert("foo"), runQuery);
+      yield* $(insertCity("Foo"), runQuery);
 
-      const res2 = yield* $(selectName, runQueryExactlyOne, Effect.either);
-      expect(res2).toEqual(E.right({ name: "foo" }));
+      const res2 = yield* $(
+        selectNameFromCities,
+        runQueryExactlyOne,
+        Effect.either
+      );
+
+      expect(res2).toEqual(E.right({ name: "Foo" }));
     })
   );
 
   it.pgtransaction("runQueryExactlyOne ==2: finds record", () =>
     Effect.gen(function* ($) {
-      yield* $(insert("foo"), runQuery);
-      yield* $(insert("bar"), runQuery);
+      yield* $(insertCity("Foo"), runQuery);
+      yield* $(insertCity("Bar"), runQuery);
 
-      const res2 = yield* $(selectName, runQueryExactlyOne, Effect.either);
+      const res2 = yield* $(
+        selectNameFromCities,
+        runQueryExactlyOne,
+        Effect.either
+      );
 
       expect(res2).toEqual(
         E.left(
@@ -139,7 +155,7 @@ describe("pg", () => {
   it.effect("handle PoolError", () =>
     Effect.gen(function* ($) {
       const res = yield* $(
-        select,
+        selectFromCities,
         runQuery,
         Effect.provideSomeLayer(
           Layer.scoped(
@@ -169,19 +185,21 @@ describe("pg", () => {
   it.pgtransaction("transactions", () =>
     Effect.gen(function* ($) {
       const count = pipe(
-        select,
+        selectFromCities,
         runQuery,
         Effect.map((_) => _.length)
       );
 
-      yield* $(insert("foo"), runQuery, transaction);
+      const insert = runQuery(insertCity("Foo"));
+
+      yield* $(insert, transaction);
       expect(yield* $(count)).toEqual(1);
 
-      yield* $(insert("foo"), runQuery, transaction);
+      yield* $(insert, transaction);
       expect(yield* $(count)).toEqual(2);
 
       yield* $(
-        Effect.all(runQuery(insert("foo")), Effect.fail("fail")),
+        Effect.all(insert, Effect.fail("fail")),
         transaction,
         Effect.either
       );
@@ -208,12 +226,12 @@ describe("pg", () => {
     })
   );
 
-  it.pgtransaction("respects case", () =>
+  it.pgtransaction.fails("respects case", () =>
     Effect.gen(function* ($) {
-      yield* $(insert("Foo"), runQuery);
+      yield* $(insertCity("Foo"), runQuery);
 
       const res2 = yield* $(
-        db.selectFrom("cities").select("name as cityName"),
+        db.select({ cityName: cities.name }).from(cities),
         runQueryOne,
         Effect.either
       );
@@ -222,6 +240,7 @@ describe("pg", () => {
     })
   );
 
+  /*
   it.pgtransaction("json_agg", () =>
     Effect.gen(function* ($) {
       const insertCity = (name: string) =>
@@ -290,4 +309,5 @@ describe("pg", () => {
       );
     })
   );
+  */
 });

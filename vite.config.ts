@@ -6,6 +6,5 @@ export default defineConfig({
   plugins: [tsconfigPaths()],
   test: {
     include: ["./test/**/*.test.{js,mjs,cjs,ts,mts,cts}"],
-    setupFiles: ["./test/helpers/setup.runtime.ts"],
   },
 });
