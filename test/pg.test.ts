@@ -153,14 +153,13 @@ describe("pg", () => {
         Effect.either
       );
 
-      expect(res).toEqual(
-        E.left(
-          new DatabaseError({
-            name: "ConnectionPoolError",
-            message: `connect ECONNREFUSED ::1:5432`,
-          })
-        )
-      );
+      if (E.isRight(res)) throw new Error();
+
+      expect(res.left).toBeInstanceOf(DatabaseError);
+      if (res.left._tag !== "DatabaseError") throw new Error();
+
+      expect(res.left.name).toEqual("ConnectionPoolError");
+      expect(res.left.message).toMatch(/connect ECONNREFUSED/);
     })
   );
 
