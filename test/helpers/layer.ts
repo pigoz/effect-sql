@@ -9,7 +9,6 @@ import * as Config from "@effect/io/Config";
 import * as ConfigSecret from "@effect/io/Config/Secret";
 import * as ConfigError from "@effect/io/Config/Error";
 import { PgMigrationLayer } from "effect-sql/pg/schema";
-import { QueryBuilder } from "effect-sql/query";
 import { db } from "../pg.dsl";
 
 export const testContainer = pipe(
@@ -25,7 +24,7 @@ export const testContainer = pipe(
   })
 );
 
-export type TestLayer = ConnectionPool | QueryBuilder;
+export type TestLayer = ConnectionPool;
 
 export const testLayer: Layer.Layer<
   never,
@@ -37,10 +36,10 @@ export const testLayer: Layer.Layer<
     Effect.flatMap(testContainer, (uri) =>
       ConnectionPoolScopedService({
         databaseUrl: Config.succeed(ConfigSecret.fromString(uri)),
+        transformer: db,
       })
     )
   ),
-  Layer.provideMerge(Layer.succeed(QueryBuilder, db)),
   Layer.provideMerge(
     PgMigrationLayer(path.resolve(__dirname, "../migrations/pg"))
   )

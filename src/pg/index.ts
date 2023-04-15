@@ -12,15 +12,16 @@ import * as Config from "@effect/io/Config";
 import * as ConfigSecret from "@effect/io/Config/Secret";
 import * as Pool from "@effect/io/Pool";
 import { ConfigError } from "@effect/io/Config/Error";
+import { TransformResultSync } from "effect-sql/query";
 
 import { DatabaseError, NotFound, TooMany } from "effect-sql/errors";
 import { Compilable, InferResult, QueryResult, UnknownRow } from "kysely";
 
 import pg from "pg";
-import { QueryBuilder } from "effect-sql/query";
 
 interface Client extends Data.Case {
   _tag: "Client";
+  transformer: TransformResultSync;
   native: pg.Client;
   savepoint: number;
 }
@@ -54,8 +55,9 @@ const defaultConfig = {
 type DatabaseConfig = typeof defaultConfig;
 
 export function ConnectionPoolScopedService(
-  config: Partial<DatabaseConfig>
+  config_: Partial<DatabaseConfig> & { transformer: TransformResultSync }
 ): Effect.Effect<Scope.Scope, ConfigError, ConnectionPool> {
+  const { transformer, ...config } = config_;
   const getConnectionString = pipe(
     Effect.config(Config.all({ ...defaultConfig, ...config })),
     Effect.map(({ databaseUrl, databaseName }) =>
@@ -89,7 +91,7 @@ export function ConnectionPoolScopedService(
           client.connect((error) => resume(pgErrorToEffect(error)))
         )
       ),
-      Effect.map((native) => makeClient({ native, savepoint: 0 }))
+      Effect.map((native) => makeClient({ native, transformer, savepoint: 0 }))
     );
 
     const disconnect = (client: Client) =>
@@ -124,9 +126,13 @@ export function connect(
   );
 }
 
-export function withClient<R, E, A>(
+export function connected<R, E, A>(
   self: Effect.Effect<R | Client, E, A>
-): Effect.Effect<R | ConnectionPool | Scope.Scope, DatabaseError | E, A> {
+): Effect.Effect<
+  Exclude<R, Client> | ConnectionPool | Scope.Scope,
+  DatabaseError | E,
+  A
+> {
   return Effect.flatMap(connect(), (client) =>
     Effect.provideService(Client, client)(self)
   );
@@ -135,7 +141,7 @@ export function withClient<R, E, A>(
 export function runQuery<Builder extends Compilable<any>>(
   builder: Builder
 ): Effect.Effect<
-  ConnectionPool | QueryBuilder | Scope.Scope,
+  ConnectionPool | Scope.Scope,
   DatabaseError,
   InferResult<Builder>
 > {
@@ -154,7 +160,7 @@ export function runQueryOne<
 >(
   builder: Builder
 ): Effect.Effect<
-  ConnectionPool | QueryBuilder | Scope.Scope,
+  ConnectionPool | Scope.Scope,
   DatabaseError | NotFound,
   Element
 > {
@@ -178,7 +184,7 @@ export function runQueryExactlyOne<
 >(
   builder: Builder
 ): Effect.Effect<
-  ConnectionPool | QueryBuilder | Scope.Scope,
+  ConnectionPool | Scope.Scope,
   DatabaseError | NotFound | TooMany,
   Element
 > {
@@ -226,8 +232,8 @@ function QueryResultFromPg<O>(result: pg.QueryResult): QueryResult<O> {
 
 export function runRawQuery(sql: string, parameters?: readonly unknown[]) {
   return pipe(
-    Effect.all([Client, QueryBuilder]),
-    Effect.flatMap(([client, builder]) =>
+    Client,
+    Effect.flatMap((client) =>
       pipe(
         Effect.async<never, DatabaseError, QueryResult<UnknownRow>>(
           (resume) => {
@@ -251,10 +257,10 @@ export function runRawQuery(sql: string, parameters?: readonly unknown[]) {
             );
           }
         ),
-        Effect.map((result) => builder.transformResultSync(result))
+        Effect.map((result) => client.transformer.transformResultSync(result))
       )
     ),
-    withClient
+    connected
   );
 }
 

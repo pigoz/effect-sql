@@ -13,7 +13,7 @@ import {
   runQueryOne,
   runRawQuery,
   transaction,
-  withClient,
+  connected,
 } from "effect-sql/pg";
 import { DatabaseError, NotFound, TooMany } from "effect-sql/errors";
 import { City, User, db } from "./pg.dsl";
@@ -224,7 +224,7 @@ describe("pg", () => {
   it.effect("create database", () =>
     Effect.gen(function* ($) {
       const res = yield* $(
-        withClient(
+        connected(
           Effect.all(
             runRawQuery(`drop database if exists "foo"`),
             runRawQuery(`create database "foo";`),

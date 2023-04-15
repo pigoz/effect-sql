@@ -10,8 +10,6 @@ import {
   UnknownRow,
 } from "kysely";
 
-import * as Context from "@effect/data/Context";
-
 import {
   ColumnsToCamelCase,
   SyncCamelCasePlugin,
@@ -38,17 +36,20 @@ export interface QueryBuilderConfig {
   useCamelCaseTransformer?: boolean;
 }
 
-export interface QueryBuilder extends QueryBuilderDsl<{}, {}, any> {}
-
-export const QueryBuilder = Context.Tag<QueryBuilder>("QueryBuilder");
+export interface TransformResultSync {
+  transformResultSync(result: QueryResult<UnknownRow>): QueryResult<UnknownRow>;
+}
 
 export class QueryBuilderDsl<
-  T extends Record<string, Table>,
-  O extends QueryBuilderConfig,
-  Database = O["useCamelCaseTransformer"] extends true
-    ? CamelCase<InferDatabaseFromSchema<T>>
-    : InferDatabaseFromSchema<T>
-> extends Kysely<Database> {
+    T extends Record<string, Table>,
+    O extends QueryBuilderConfig,
+    Database = O["useCamelCaseTransformer"] extends true
+      ? CamelCase<InferDatabaseFromSchema<T>>
+      : InferDatabaseFromSchema<T>
+  >
+  extends Kysely<Database>
+  implements TransformResultSync
+{
   readonly #plugins: readonly SyncKyselyPlugin[];
 
   constructor(
