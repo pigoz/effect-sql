@@ -175,6 +175,7 @@ describe("pg", () => {
             ConnectionPool,
             ConnectionPoolScopedService({
               databaseUrl: Config.succeed(ConfigSecret.fromString("")),
+              transformer: db,
             })
           )
         ),
