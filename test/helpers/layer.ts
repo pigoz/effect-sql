@@ -4,7 +4,7 @@ import * as Layer from "@effect/io/Layer";
 import { PostgreSqlContainer } from "testcontainers";
 import * as path from "path";
 import { ConnectionPool, ConnectionPoolScopedService } from "effect-sql/pg";
-import { MigrationError, PoolError } from "effect-sql/errors";
+import { MigrationError, DatabaseError } from "effect-sql/errors";
 import * as Config from "@effect/io/Config";
 import * as ConfigSecret from "@effect/io/Config/Secret";
 import * as ConfigError from "@effect/io/Config/Error";
@@ -29,7 +29,7 @@ export type TestLayer = ConnectionPool | QueryBuilder;
 
 export const testLayer: Layer.Layer<
   never,
-  PoolError | MigrationError | ConfigError.ConfigError,
+  DatabaseError | MigrationError | ConfigError.ConfigError,
   TestLayer
 > = pipe(
   Layer.scoped(

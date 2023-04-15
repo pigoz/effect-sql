@@ -49,13 +49,13 @@ import {
 import { db } from "./dsl.ts";
 
 const post1 = runQuery(db.selectFrom("posts"));
-//    ^ Effect<PgConnection, PgError, { id: number, name: string }>
+//    ^ Effect<ConnectionPool, DatabaseError, { id: number, name: string }>
 
 const post2 = runQueryOne(db.selectFrom("posts"));
-//    ^ Effect<PgConnection, PgError | NotFound, { id: number, name: string }>
+//    ^ Effect<ConnectionPool, DatabaseError | NotFound, { id: number, name: string }>
 
 const post3 = runQueryExactlyOne(db.selectFrom("posts"));
-//    ^ Effect<PgConnection, PgError | NotFound | TooMany, { id: number, name: string }>
+//    ^ Effect<ConnectionPool, DatabaseError | NotFound | TooMany, { id: number, name: string }>
 
 transaction(Effect.all(
   db.insertInto('posts').values({ title: 'Solvet saeclum' }),
