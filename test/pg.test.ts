@@ -19,36 +19,29 @@ import { DatabaseError, NotFound, TooMany } from "effect-sql/errors";
 import { City, User, db } from "./pg.dsl";
 import { jsonAgg } from "effect-sql/pg/utils";
 
+const select = db.selectFrom("cities");
+const selectName = db.selectFrom("cities").select("name");
+const insert = (name: string) => db.insertInto("cities").values({ name });
+
 describe("pg", () => {
   it.pgtransaction("runQuery ==0", () =>
     Effect.gen(function* ($) {
-      const query = runQuery(db.selectFrom("cities"));
-      expect((yield* $(query)).length).toEqual(0);
-
-      yield* $(runQuery(db.insertInto("cities").values({ name: "Foo" })));
-      yield* $(runQuery(db.insertInto("cities").values({ name: "Bar" })));
-
-      expect((yield* $(query)).length).toEqual(2);
+      expect((yield* $(select, runQuery)).length).toEqual(0);
     })
   );
 
   it.pgtransaction("runQuery ==2", () =>
     Effect.gen(function* ($) {
-      yield* $(runQuery(db.insertInto("cities").values({ name: "Foo" })));
-      yield* $(runQuery(db.insertInto("cities").values({ name: "Bar" })));
+      yield* $(insert("foo"), runQuery);
+      yield* $(insert("bar"), runQuery);
 
-      const query = runQuery(db.selectFrom("cities"));
-      expect((yield* $(query)).length).toEqual(2);
+      expect((yield* $(select, runQuery)).length).toEqual(2);
     })
   );
 
   it.pgtransaction("runQueryOne ==0: NotFound", () =>
     Effect.gen(function* ($) {
-      const res1 = yield* $(
-        db.selectFrom("cities"),
-        runQueryOne,
-        Effect.either
-      );
+      const res1 = yield* $(select, runQueryOne, Effect.either);
 
       expect(res1).toEqual(
         E.left(
@@ -63,40 +56,27 @@ describe("pg", () => {
 
   it.pgtransaction("runQueryOne ==1: finds record", () =>
     Effect.gen(function* ($) {
-      yield* $(db.insertInto("cities").values({ name: "Foo" }), runQuery);
+      yield* $(insert("foo"), runQuery);
 
-      const res2 = yield* $(
-        db.selectFrom("cities").select("name"),
-        runQueryOne,
-        Effect.either
-      );
-
-      expect(res2).toEqual(E.right({ name: "Foo" }));
+      const res2 = yield* $(selectName, runQueryOne, Effect.either);
+      expect(res2).toEqual(E.right({ name: "foo" }));
     })
   );
 
   it.pgtransaction("runQueryOne ==2: finds record", () =>
     Effect.gen(function* ($) {
-      yield* $(db.insertInto("cities").values({ name: "Foo" }), runQuery);
-      yield* $(db.insertInto("cities").values({ name: "Bar" }), runQuery);
+      yield* $(insert("foo"), runQuery);
+      yield* $(insert("bar"), runQuery);
 
-      const res2 = yield* $(
-        db.selectFrom("cities").select("name"),
-        runQueryOne,
-        Effect.either
-      );
+      const res2 = yield* $(selectName, runQueryOne, Effect.either);
 
-      expect(res2).toEqual(E.right({ name: "Foo" }));
+      expect(res2).toEqual(E.right({ name: "foo" }));
     })
   );
 
   it.pgtransaction("runQueryExactlyOne ==0: NotFound", () =>
     Effect.gen(function* ($) {
-      const res1 = yield* $(
-        db.selectFrom("cities"),
-        runQueryExactlyOne,
-        Effect.either
-      );
+      const res1 = yield* $(select, runQueryExactlyOne, Effect.either);
 
       expect(res1).toEqual(
         E.left(
@@ -111,28 +91,19 @@ describe("pg", () => {
 
   it.pgtransaction("runQueryExactlyOne ==1: finds record", () =>
     Effect.gen(function* ($) {
-      yield* $(runQuery(db.insertInto("cities").values({ name: "Foo" })));
+      yield* $(insert("foo"), runQuery);
 
-      const res2 = yield* $(
-        db.selectFrom("cities").select("name"),
-        runQueryExactlyOne,
-        Effect.either
-      );
-
-      expect(res2).toEqual(E.right({ name: "Foo" }));
+      const res2 = yield* $(selectName, runQueryExactlyOne, Effect.either);
+      expect(res2).toEqual(E.right({ name: "foo" }));
     })
   );
 
   it.pgtransaction("runQueryExactlyOne ==2: finds record", () =>
     Effect.gen(function* ($) {
-      yield* $(runQuery(db.insertInto("cities").values({ name: "Foo" })));
-      yield* $(runQuery(db.insertInto("cities").values({ name: "Bar" })));
+      yield* $(insert("foo"), runQuery);
+      yield* $(insert("bar"), runQuery);
 
-      const res2 = yield* $(
-        db.selectFrom("cities").select("name"),
-        runQueryExactlyOne,
-        Effect.either
-      );
+      const res2 = yield* $(selectName, runQueryExactlyOne, Effect.either);
 
       expect(res2).toEqual(
         E.left(
@@ -168,7 +139,7 @@ describe("pg", () => {
   it.effect("handle PoolError", () =>
     Effect.gen(function* ($) {
       const res = yield* $(
-        db.selectFrom("cities"),
+        select,
         runQuery,
         Effect.provideSomeLayer(
           Layer.scoped(
@@ -196,24 +167,19 @@ describe("pg", () => {
   it.pgtransaction("transactions", () =>
     Effect.gen(function* ($) {
       const count = pipe(
-        db.selectFrom("cities"),
+        select,
         runQuery,
         Effect.map((_) => _.length)
       );
 
-      const insert = pipe(
-        db.insertInto("cities").values({ name: "foo" }),
-        runQuery
-      );
-
-      yield* $(insert, transaction);
+      yield* $(insert("foo"), runQuery, transaction);
       expect(yield* $(count)).toEqual(1);
 
-      yield* $(insert, transaction);
+      yield* $(insert("foo"), runQuery, transaction);
       expect(yield* $(count)).toEqual(2);
 
       yield* $(
-        Effect.all(insert, Effect.fail("fail")),
+        Effect.all(runQuery(insert("foo")), Effect.fail("fail")),
         transaction,
         Effect.either
       );
@@ -242,7 +208,7 @@ describe("pg", () => {
 
   it.pgtransaction("respects case", () =>
     Effect.gen(function* ($) {
-      yield* $(db.insertInto("cities").values({ name: "Foo" }), runQuery);
+      yield* $(insert("Foo"), runQuery);
 
       const res2 = yield* $(
         db.selectFrom("cities").select("name as cityName"),
