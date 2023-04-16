@@ -145,7 +145,9 @@ describe("pg", () => {
           Layer.scoped(
             ConnectionPool,
             ConnectionPoolScopedService({
-              databaseUrl: Config.succeed(ConfigSecret.fromString("")),
+              databaseUrl: Config.succeed(
+                ConfigSecret.fromString("postgres://127.0.0.1:80")
+              ),
               transformer: db,
             })
           )
@@ -153,13 +155,14 @@ describe("pg", () => {
         Effect.either
       );
 
-      if (E.isRight(res)) throw new Error();
-
-      expect(res.left).toBeInstanceOf(DatabaseError);
-      if (res.left._tag !== "DatabaseError") throw new Error();
-
-      expect(res.left.name).toEqual("ConnectionPoolError");
-      expect(res.left.message).toMatch(/connect ECONNREFUSED/);
+      expect(res).toEqual(
+        E.left(
+          new DatabaseError({
+            name: "ConnectionPoolError",
+            message: `connect ECONNREFUSED 127.0.0.1:80`,
+          })
+        )
+      );
     })
   );
 
