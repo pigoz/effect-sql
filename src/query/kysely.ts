@@ -5,6 +5,7 @@ import {
   Kysely,
   KyselyConfig,
   KyselyPlugin,
+  CamelCasePlugin,
   PluginTransformResultArgs,
   QueryResult,
   UnknownRow,
@@ -12,10 +13,33 @@ import {
 
 import { TransformResultSync } from "effect-sql/query";
 
-import {
-  ColumnsToCamelCase,
-  SyncCamelCasePlugin,
-} from "effect-sql/query/camelcase";
+type CamelCase<S extends string> =
+  S extends `${infer P1}_${infer P2}${infer P3}`
+    ? `${Lowercase<P1>}${Uppercase<P2>}${CamelCase<P3>}`
+    : Lowercase<S>;
+
+export type ColumnsToCamelCase<T> = {
+  [K in keyof T as CamelCase<string & K>]: T[K];
+};
+
+export class SyncCamelCasePlugin
+  extends CamelCasePlugin
+  implements SyncKyselyPlugin
+{
+  // same code from transformResult() withouth the pointless promise
+  transformResultSync(
+    args: Omit<PluginTransformResultArgs, "queryId">
+  ): QueryResult<UnknownRow> {
+    if (args.result.rows && Array.isArray(args.result.rows)) {
+      return {
+        ...args.result,
+        rows: args.result.rows.map((row) => this.mapRow(row)),
+      };
+    }
+
+    return args.result;
+  }
+}
 
 export interface SyncKyselyPlugin extends KyselyPlugin {
   transformResultSync(
@@ -27,7 +51,9 @@ type InferDatabaseFromSchema<T extends Record<string, Table>> = {
   [K in keyof T]: Kyselify<T[K]>;
 };
 
-type CamelCase<T extends InferDatabaseFromSchema<Record<string, Table>>> = {
+type CamelCaseDatabase<
+  T extends InferDatabaseFromSchema<Record<string, Table>>
+> = {
   [K in keyof T]: ColumnsToCamelCase<T[K]>;
 };
 
@@ -42,7 +68,7 @@ export class QueryBuilderDsl<
     T extends Record<string, Table>,
     O extends QueryBuilderConfig,
     Database = O["useCamelCaseTransformer"] extends true
-      ? CamelCase<InferDatabaseFromSchema<T>>
+      ? CamelCaseDatabase<InferDatabaseFromSchema<T>>
       : InferDatabaseFromSchema<T>
   >
   extends Kysely<Database>
