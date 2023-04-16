@@ -1,5 +1,11 @@
 # effect-sql
 
+## 0.0.17
+
+### Patch Changes
+
+- [`341ed57`](https://github.com/pigoz/effect-sql/commit/341ed5757275f7c63080d73ee9a679927d355624) Thanks [@pigoz](https://github.com/pigoz)! - great refactor, allows pluggable query builders
+
 ## 0.0.16
 
 ### Patch Changes
