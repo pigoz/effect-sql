@@ -70,6 +70,22 @@ transaction(Effect.all(
     db.insertInto('posts').values({ title: 'Teste David cum Sibylla' }),
   )),
 ))
+
+import { ConnectionPool, ConnectionPoolScopedService } from "effect-sql/pg";
+
+const ConnectionPoolLive = Layer.scoped(
+  ConnectionPool,
+
+  // transformer picks up on the useCamelCaseTransformer configuration option
+  // used above and handles camelization of query results
+  ConnectionPoolScopedService({ transformer: db })
+);
+
+pipe(
+  post3,
+  Effect.provideLayer(ConnectionPoolLive),
+  Effect.runFork
+)
 ```
 
 [Please check the tests for more complete examples!](https://github.com/pigoz/effect-sql/tree/main/test)
