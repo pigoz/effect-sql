@@ -7,6 +7,8 @@ import {
   PostgresIntrospector,
 } from "kysely";
 
+export type { InferDatabase } from "effect-sql/query/kysely";
+
 export function queryBuilderDsl<
   T extends Record<string, Table>,
   O extends QueryBuilderConfig

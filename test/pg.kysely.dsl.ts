@@ -1,7 +1,6 @@
 // Kysely
 import * as schema from "./pg.schema";
-import { InferDatabase } from "effect-sql/query/kysely";
-import { queryBuilderDsl } from "effect-sql/pg/schema/kysely";
+import { queryBuilderDsl, InferDatabase } from "effect-sql/pg/schema/kysely";
 
 import { Selectable } from "kysely";
 

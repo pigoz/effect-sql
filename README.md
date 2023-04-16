@@ -26,20 +26,24 @@ import { pgTable, serial, text } from "effect-sql/pg/schema"
 
 const posts = pgTable("posts", {
   id: serial("id").primaryKey(),
-  name: text("title").notNull(),
+  title: text("title").notNull(),
 });
 ```
 
-Using Kysely:
-
 ```typescript
-// kysely.ts
+// dsl.ts
 import { InferDatabase, createQueryDsl } from "effect-sql/pg/schema/kysely";
+import { Selectable } from "kysely";
+
 import * as schema from "./schema.ts";
 
-interface Database extends InferDatabase<typeof schema> {}
-export const db = createQueryDsl<Database>();
+export const db = queryBuilderDsl(schema, { useCamelCaseTransformer: true });
+interface Database extends InferDatabase<typeof db> {}
 
+export interface Post extends Selectable<Database["posts"]> {}
+```
+
+```typescript
 // app.ts
 import {
   runQuery,
@@ -68,7 +72,28 @@ transaction(Effect.all(
 ))
 ```
 
-Using Drizzle as a Query Builder is possible, but currently not recommended as
-it doesn't correctly handle mapping of field names.
-
 [Please check the tests for more complete examples!](https://github.com/pigoz/effect-sql/tree/main/test)
+
+#### Drizzle as a Query Builder
+
+Using Drizzle as a Query Builder is possible, but currently not recommended as
+it doesn't correctly map field names. For example:
+
+```typescript
+  db.select({ cityName: cities.name }).from(cities)
+```
+
+Will return `{ name: 'New York' }` instead of the expected `{ cityName: 'New York' }`.
+
+The reason being, instead of converting the above example to the expected SQL:
+
+```sql
+select "name" as "cityName" from "cities"
+```
+
+Drizzle generates a simplified query to fetch raw arrays from the database,
+and uses custom logic to assign the correct field names when it turns those
+arrays into JS objects [details here!](https://discord.com/channels/1043890932593987624/1093581666666156043)
+
+The pluggable query builder feature is there to force the internal
+implementation of effect-sql to be as modular as possibile.
