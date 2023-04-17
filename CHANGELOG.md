@@ -1,5 +1,11 @@
 # effect-sql
 
+## 0.0.19
+
+### Patch Changes
+
+- [`5293766`](https://github.com/pigoz/effect-sql/commit/5293766396dad9f165643b4c1d8ca072e404675f) Thanks [@pigoz](https://github.com/pigoz)! - a few renames
+
 ## 0.0.18
 
 ### Patch Changes
