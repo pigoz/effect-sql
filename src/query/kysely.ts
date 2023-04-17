@@ -51,9 +51,7 @@ type InferDatabaseFromSchema<T extends Record<string, Table>> = {
   [K in keyof T]: Kyselify<T[K]>;
 };
 
-type CamelCaseDatabase<
-  T extends InferDatabaseFromSchema<Record<string, Table>>
-> = {
+type CamelCaseDatabase<T extends InferDatabaseFromSchema<any>> = {
   [K in keyof T]: ColumnsToCamelCase<T[K]>;
 };
 
