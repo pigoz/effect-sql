@@ -172,14 +172,12 @@ export function runQueryOne<
   return pipe(
     builder,
     runQuery,
-    Effect.flatMap((x) => {
-      return pipe(
-        x as Element[],
-        REA.head,
-        Either.fromOption(() => new NotFound(builderToError(builder))),
-        Effect.fromEither
-      );
-    })
+    Effect.flatMap((result) =>
+      pipe(
+        REA.head(result as Element[]),
+        Either.fromOption(() => new NotFound(builderToError(builder)))
+      )
+    )
   );
 }
 
@@ -197,7 +195,7 @@ export function runQueryExactlyOne<
     builder,
     runQuery,
     Effect.flatMap(
-      Effect.unified((x) => {
+      Effect.unifiedFn((x) => {
         const [head, ...rest] = x as Element[];
 
         if (rest.length > 0) {
@@ -206,8 +204,7 @@ export function runQueryExactlyOne<
 
         return pipe(
           head,
-          Either.fromNullable(() => new NotFound(builderToError(builder))),
-          Effect.fromEither
+          Either.fromNullable(() => new NotFound(builderToError(builder)))
         );
       })
     )
@@ -261,7 +258,7 @@ const matchSavepoint = <R1, R2, E1, E2, A1, A2>(
 ): Effect.Effect<Client | R1 | R2, E1 | E2, A1 | A2> =>
   Effect.flatMap(
     Client,
-    Effect.unified((client) =>
+    Effect.unifiedFn((client) =>
       client.savepoint > 0
         ? onPositive(`savepoint_${client.savepoint}`)
         : onZero()
