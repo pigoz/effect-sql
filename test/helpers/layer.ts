@@ -11,7 +11,7 @@ import * as path from "path";
 import { ConnectionPool, ConnectionPoolScopedService } from "effect-sql/pg";
 import * as Config from "@effect/io/Config";
 import * as ConfigSecret from "@effect/io/Config/Secret";
-import { PgMigrationLayer } from "effect-sql/pg/schema";
+import { MigrationLayer } from "effect-sql/pg/schema";
 import { TransformResultSync } from "effect-sql/query";
 
 import { afterAll, beforeAll } from "vitest";
@@ -43,7 +43,7 @@ const testLayer = (transformer: TransformResultSync) =>
       )
     ),
     Layer.provideMerge(
-      PgMigrationLayer(path.resolve(__dirname, "../migrations/pg"))
+      MigrationLayer(path.resolve(__dirname, "../migrations/pg"))
     )
   );
 

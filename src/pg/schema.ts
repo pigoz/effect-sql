@@ -10,7 +10,7 @@ import { migrate as dmigrate } from "drizzle-orm/node-postgres/migrator.js";
 
 export * from "drizzle-orm/pg-core/index.js";
 
-export function PgMigrationLayer(path: string) {
+export function MigrationLayer(path: string) {
   return Layer.effectDiscard(Effect.scoped(migrate(path)));
 }
 
