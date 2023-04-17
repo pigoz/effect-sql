@@ -1,5 +1,11 @@
 # effect-sql
 
+## 0.0.18
+
+### Patch Changes
+
+- [#27](https://github.com/pigoz/effect-sql/pull/27) [`43e95d3`](https://github.com/pigoz/effect-sql/commit/43e95d3dcf36f515d5fea18473c3c049f35467f8) Thanks [@pigoz](https://github.com/pigoz)! - chore(deps): update
+
 ## 0.0.17
 
 ### Patch Changes
