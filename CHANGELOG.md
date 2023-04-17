@@ -1,5 +1,11 @@
 # effect-sql
 
+## 0.0.21
+
+### Patch Changes
+
+- [`ad78e32`](https://github.com/pigoz/effect-sql/commit/ad78e3225deb6df735bda4f20440ecb759169d8f) Thanks [@pigoz](https://github.com/pigoz)! - fix: use strings for tags
+
 ## 0.0.20
 
 ### Patch Changes
