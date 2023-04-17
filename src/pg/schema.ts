@@ -10,6 +10,8 @@ import { migrate as dmigrate } from "drizzle-orm/node-postgres/migrator.js";
 
 export * from "drizzle-orm/pg-core/index.js";
 
+export { InferModel } from "drizzle-orm";
+
 export function MigrationLayer(path: string) {
   return Layer.effectDiscard(Effect.scoped(migrate(path)));
 }
