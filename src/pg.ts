@@ -31,7 +31,7 @@ interface Client extends Data.Case {
   savepoint: number;
 }
 
-const Client = Context.Tag<Client>(Symbol.for("pigoz/effect-sql/Client"));
+const Client = Context.Tag<Client>("pigoz/effect-sql/Client");
 
 const makeClient = Data.tagged<Client>("Client");
 
@@ -41,7 +41,7 @@ export interface ConnectionPool extends Data.Case {
 }
 
 export const ConnectionPool = Context.Tag<ConnectionPool>(
-  Symbol.for("pigoz/effect-sql/ConnectionPool")
+  "pigoz/effect-sql/ConnectionPool"
 );
 
 const makeConnectionPool = Data.tagged<ConnectionPool>("ConnectionPool");
