@@ -1,5 +1,11 @@
 # effect-sql
 
+## 0.0.20
+
+### Patch Changes
+
+- [`ecc2922`](https://github.com/pigoz/effect-sql/commit/ecc29223b1499884c843b8085ebc38569d7279f5) Thanks [@pigoz](https://github.com/pigoz)! - fix: rename files for proper cjs resolution
+
 ## 0.0.19
 
 ### Patch Changes
