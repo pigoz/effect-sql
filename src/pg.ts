@@ -273,25 +273,19 @@ export function transaction<R, E1, A>(
   const bumpSavepoint = (c: Client) =>
     makeClient({ ...c, savepoint: c.savepoint + 1 });
 
-  const acquire = Effect.flatMap(Scope.make(), (scope) =>
-    pipe(
-      connect(bumpSavepoint),
-      Effect.provideService(Scope.Scope, scope),
-      Effect.flatMap((client) =>
-        Effect.zipRight(
-          Effect.provideService(start, Client, client),
-          Effect.succeed({ client, scope })
-        )
+  const acquire = pipe(
+    connect(bumpSavepoint),
+    Effect.flatMap((client) =>
+      Effect.zipRight(
+        Effect.provideService(start, Client, client),
+        Effect.succeed(client)
       )
     )
   );
 
-  type TransactionContext = { client: Client; scope: Scope.CloseableScope };
+  const use = (client: Client) => Effect.provideService(Client, client)(self);
 
-  const use = (ctx: TransactionContext) =>
-    Effect.provideService(Client, ctx.client)(self);
-
-  const release = <E, A>(ctx: TransactionContext, exit: Exit.Exit<E, A>) =>
+  const release = <E, A>(client: Client, exit: Exit.Exit<E, A>) =>
     pipe(
       exit,
       Exit.match(
@@ -299,9 +293,8 @@ export function transaction<R, E1, A>(
         () => (options?.test ? rollback : commit)
       ),
       Effect.orDie, // XXX handle error when rolling back?
-      Effect.provideService(Client, ctx.client),
-      Effect.ensuring(Scope.close(ctx.scope, exit))
+      Effect.provideService(Client, client)
     );
 
-  return Effect.acquireUseRelease(acquire, use, release);
+  return Effect.scoped(Effect.acquireUseRelease(acquire, use, release));
 }
