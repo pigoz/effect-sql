@@ -133,23 +133,17 @@ export function connect(
 
 export function connected<R, E, A>(
   self: Effect.Effect<R | Client, E, A>
-): Effect.Effect<
-  Exclude<R, Client> | ConnectionPool | Scope.Scope,
-  DatabaseError | E,
-  A
-> {
-  return Effect.flatMap(connect(), (client) =>
-    Effect.provideService(Client, client)(self)
+): Effect.Effect<Exclude<R, Client> | ConnectionPool, DatabaseError | E, A> {
+  return pipe(
+    connect(),
+    Effect.flatMap((client) => Effect.provideService(self, Client, client)),
+    Effect.scoped
   );
 }
 
 export function runQuery<Builder extends Compilable<any>>(
   builder: Builder
-): Effect.Effect<
-  ConnectionPool | Scope.Scope,
-  DatabaseError,
-  InferResult<Builder>
-> {
+): Effect.Effect<ConnectionPool, DatabaseError, InferResult<Builder>> {
   const sql = compile(builder);
   return Effect.map(runRawQuery(sql.sql, sql.parameters), (_) => _.rows as any);
 }
@@ -164,11 +158,7 @@ export function runQueryOne<
   Element extends InferResult<Builder> extends (infer X)[] ? X : never
 >(
   builder: Builder
-): Effect.Effect<
-  ConnectionPool | Scope.Scope,
-  DatabaseError | NotFound,
-  Element
-> {
+): Effect.Effect<ConnectionPool, DatabaseError | NotFound, Element> {
   return pipe(
     builder,
     runQuery,
@@ -186,11 +176,7 @@ export function runQueryExactlyOne<
   Element extends InferResult<Builder> extends (infer X)[] ? X : never
 >(
   builder: Builder
-): Effect.Effect<
-  ConnectionPool | Scope.Scope,
-  DatabaseError | NotFound | TooMany,
-  Element
-> {
+): Effect.Effect<ConnectionPool, DatabaseError | NotFound | TooMany, Element> {
   return pipe(
     builder,
     runQuery,
@@ -287,19 +273,25 @@ export function transaction<R, E1, A>(
   const bumpSavepoint = (c: Client) =>
     makeClient({ ...c, savepoint: c.savepoint + 1 });
 
-  const acquire = pipe(
-    connect(bumpSavepoint),
-    Effect.flatMap((client) =>
-      Effect.zipRight(
-        Effect.provideService(Client, client)(start),
-        Effect.succeed(client)
+  const acquire = Effect.flatMap(Scope.make(), (scope) =>
+    pipe(
+      connect(bumpSavepoint),
+      Effect.provideService(Scope.Scope, scope),
+      Effect.flatMap((client) =>
+        Effect.zipRight(
+          Effect.provideService(start, Client, client),
+          Effect.succeed({ client, scope })
+        )
       )
     )
   );
 
-  const use = (client: Client) => Effect.provideService(Client, client)(self);
+  type TransactionContext = { client: Client; scope: Scope.CloseableScope };
 
-  const release = <E, A>(client: Client, exit: Exit.Exit<E, A>) =>
+  const use = (ctx: TransactionContext) =>
+    Effect.provideService(Client, ctx.client)(self);
+
+  const release = <E, A>(ctx: TransactionContext, exit: Exit.Exit<E, A>) =>
     pipe(
       exit,
       Exit.match(
@@ -307,7 +299,8 @@ export function transaction<R, E1, A>(
         () => (options?.test ? rollback : commit)
       ),
       Effect.orDie, // XXX handle error when rolling back?
-      Effect.provideService(Client, client)
+      Effect.provideService(Client, ctx.client),
+      Effect.ensuring(Scope.close(ctx.scope, exit))
     );
 
   return Effect.acquireUseRelease(acquire, use, release);
