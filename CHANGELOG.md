@@ -1,5 +1,11 @@
 # effect-sql
 
+## 0.0.22
+
+### Patch Changes
+
+- [`29c18e1`](https://github.com/pigoz/effect-sql/commit/29c18e1328184e10a83be2f622d8ef8124985045) Thanks [@pigoz](https://github.com/pigoz)! - update deps, revert strings in tags
+
 ## 0.0.21
 
 ### Patch Changes
