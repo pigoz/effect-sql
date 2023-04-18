@@ -1,4 +1,4 @@
-import { NodePgDatabase, drizzle } from "drizzle-orm/node-postgres/driver";
+import { NodePgDatabase, drizzle } from "drizzle-orm/node-postgres/driver.js";
 import { QueryResult, TransformResultSync } from "effect-sql/query";
 import { UnknownRow } from "kysely";
 
