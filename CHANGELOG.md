@@ -1,5 +1,11 @@
 # effect-sql
 
+## 0.0.23
+
+### Patch Changes
+
+- [`e2199a7`](https://github.com/pigoz/effect-sql/commit/e2199a712c9f192f86acc79900531559b186d969) Thanks [@pigoz](https://github.com/pigoz)! - fix(drizzle): workaround lacking esm support
+
 ## 0.0.22
 
 ### Patch Changes
