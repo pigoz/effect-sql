@@ -1,11 +1,14 @@
 import {
   integer,
+  pgEnum,
   pgTable,
   serial,
   text,
   timestamp,
   varchar,
 } from "effect-sql/pg/schema";
+
+export const role = pgEnum("role", ["admin", "user"]);
 
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),

@@ -1,4 +1,3 @@
-import { Table } from "drizzle-orm";
 import { QueryBuilderConfig, QueryBuilderDsl } from "effect-sql/query/kysely";
 
 import {
@@ -10,7 +9,7 @@ import {
 export type { InferDatabase } from "effect-sql/query/kysely";
 
 export function queryBuilderDsl<
-  T extends Record<string, Table>,
+  T extends Record<string, unknown>,
   O extends QueryBuilderConfig
 >(schema: T, options: O) {
   return new QueryBuilderDsl({

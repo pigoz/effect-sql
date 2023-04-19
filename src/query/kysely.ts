@@ -47,8 +47,10 @@ export interface SyncKyselyPlugin extends KyselyPlugin {
   ): QueryResult<UnknownRow>;
 }
 
-type InferDatabaseFromSchema<T extends Record<string, Table>> = {
-  [K in keyof T]: Kyselify<T[K]>;
+type InferDatabaseFromSchema<T extends Record<string, unknown>> = {
+  [K in keyof T as T[K] extends Table ? K : never]: T[K] extends Table
+    ? Kyselify<T[K]>
+    : never;
 };
 
 type CamelCaseDatabase<T extends InferDatabaseFromSchema<any>> = {
@@ -63,7 +65,7 @@ export interface QueryBuilderConfig {
 }
 
 export class QueryBuilderDsl<
-    T extends Record<string, Table>,
+    T extends Record<string, unknown>,
     O extends QueryBuilderConfig,
     Database = O["useCamelCaseTransformer"] extends true
       ? CamelCaseDatabase<InferDatabaseFromSchema<T>>
