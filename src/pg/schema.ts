@@ -14,11 +14,7 @@ export * from "drizzle-orm/pg-core/index.js";
 export { InferModel } from "drizzle-orm";
 
 export function MigrationLayer(path: string) {
-  return pipe(
-    migrate(path),
-    TaggedScope.scoped(ConnectionScope),
-    Layer.effectDiscard
-  );
+  return Layer.effectDiscard(migrate(path));
 }
 
 export function migrate(migrationsFolder: string) {
@@ -32,6 +28,7 @@ export function migrate(migrationsFolder: string) {
         },
         (error) => new MigrationError({ error })
       )
-    )
+    ),
+    TaggedScope.scoped(ConnectionScope)
   );
 }
