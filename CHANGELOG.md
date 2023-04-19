@@ -1,5 +1,11 @@
 # effect-sql
 
+## 0.0.24
+
+### Patch Changes
+
+- [`7cfdff3`](https://github.com/pigoz/effect-sql/commit/7cfdff3a4fbea23d74cf326c2f3c4d9f92c8341e) Thanks [@pigoz](https://github.com/pigoz)! - keep ConnectionPool scope at library level
+
 ## 0.0.23
 
 ### Patch Changes
