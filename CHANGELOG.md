@@ -1,5 +1,11 @@
 # effect-sql
 
+## 0.0.25
+
+### Patch Changes
+
+- [`518359b`](https://github.com/pigoz/effect-sql/commit/518359b9cf27f70d1197a562a6dcbb492b04c693) Thanks [@pigoz](https://github.com/pigoz)! - fix(schema): move scope from layer to effect
+
 ## 0.0.24
 
 ### Patch Changes
