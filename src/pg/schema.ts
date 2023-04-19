@@ -2,7 +2,8 @@ import { pipe } from "@effect/data/Function";
 import * as Layer from "@effect/io/Layer";
 import * as Effect from "@effect/io/Effect";
 
-import { connect } from "effect-sql/pg";
+import { ConnectionScope, connect } from "effect-sql/pg";
+import * as TaggedScope from "effect-sql/TaggedScope";
 import { MigrationError } from "effect-sql/errors";
 
 import { drizzle } from "drizzle-orm/node-postgres/driver.js";
@@ -13,7 +14,11 @@ export * from "drizzle-orm/pg-core/index.js";
 export { InferModel } from "drizzle-orm";
 
 export function MigrationLayer(path: string) {
-  return Layer.effectDiscard(Effect.scoped(migrate(path)));
+  return pipe(
+    migrate(path),
+    TaggedScope.scoped(ConnectionScope),
+    Layer.effectDiscard
+  );
 }
 
 export function migrate(migrationsFolder: string) {

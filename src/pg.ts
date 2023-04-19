@@ -13,6 +13,7 @@ import * as ConfigSecret from "@effect/io/Config/Secret";
 import * as Pool from "@effect/io/Pool";
 import { ConfigError } from "@effect/io/Config/Error";
 import { TransformResultSync, compile } from "effect-sql/query";
+import * as TaggedScope from "effect-sql/TaggedScope";
 
 import { DatabaseError, NotFound, TooMany } from "effect-sql/errors";
 import {
@@ -32,6 +33,14 @@ interface Client extends Data.Case {
 }
 
 const Client = Context.Tag<Client>(Symbol.for("pigoz/effect-sql/Client"));
+
+export interface ConnectionScope extends Data.Case {
+  _tag: "ConnectionScope";
+}
+
+export const ConnectionScope = TaggedScope.Tag<ConnectionScope>(
+  Symbol.for("pigoz/effect-sql/ConnectionScope")
+);
 
 const makeClient = Data.tagged<Client>("Client");
 
@@ -125,7 +134,10 @@ export function connect(
   return Effect.contextWithEffect((r: Context.Context<never>) =>
     Option.match(
       Context.getOption(r, Client),
-      () => Effect.flatMap(ConnectionPool, (service) => Pool.get(service.pool)),
+      () =>
+        Effect.flatMap(ConnectionPool, (service) =>
+          TaggedScope.tag(Pool.get(service.pool), ConnectionScope)
+        ),
       (client) => Effect.succeed(onExistingMapper(client))
     )
   );
@@ -137,7 +149,7 @@ export function connected<R, E, A>(
   return pipe(
     connect(),
     Effect.flatMap((client) => Effect.provideService(self, Client, client)),
-    Effect.scoped
+    TaggedScope.scoped(ConnectionScope)
   );
 }
 
@@ -296,5 +308,8 @@ export function transaction<R, E1, A>(
       Effect.provideService(Client, client)
     );
 
-  return Effect.scoped(Effect.acquireUseRelease(acquire, use, release));
+  return TaggedScope.scoped(
+    Effect.acquireUseRelease(acquire, use, release),
+    ConnectionScope
+  );
 }
