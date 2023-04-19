@@ -1,5 +1,11 @@
 # effect-sql
 
+## 0.0.26
+
+### Patch Changes
+
+- [`b7460db`](https://github.com/pigoz/effect-sql/commit/b7460dbbfb2f4e6abdcb2360700d0ed671cb39cf) Thanks [@pigoz](https://github.com/pigoz)! - feat(kysely): only tables from schema when inferring database
+
 ## 0.0.25
 
 ### Patch Changes
