@@ -12,9 +12,10 @@ import { ConnectionPool, ConnectionPoolScopedService } from "effect-sql/query";
 import * as Config from "@effect/io/Config";
 import * as ConfigSecret from "@effect/io/Config/Secret";
 import { MigrationLayer } from "effect-sql/schema/pg";
-import { TransformResultSync } from "effect-sql/builders/core";
 
 import { afterAll, beforeAll } from "vitest";
+import { DatabaseError, MigrationError } from "effect-sql/errors";
+import { ConfigError } from "@effect/io/Config/Error";
 
 export const testContainer = pipe(
   Effect.promise(async () => {
@@ -31,21 +32,19 @@ export const testContainer = pipe(
 
 export type TestLayer = ConnectionPool;
 
-const testLayer = (transformer: TransformResultSync) =>
-  pipe(
-    Layer.scoped(
-      ConnectionPool,
-      Effect.flatMap(testContainer, (uri) =>
-        ConnectionPoolScopedService({
-          databaseUrl: Config.succeed(ConfigSecret.fromString(uri)),
-          transformer,
-        })
-      )
-    ),
-    Layer.provideMerge(
-      MigrationLayer(path.resolve(__dirname, "../migrations/pg"))
+export const testLayer = pipe(
+  Layer.scoped(
+    ConnectionPool,
+    Effect.flatMap(testContainer, (uri) =>
+      ConnectionPoolScopedService({
+        databaseUrl: Config.succeed(ConfigSecret.fromString(uri)),
+      })
     )
-  );
+  ),
+  Layer.provideMerge(
+    MigrationLayer(path.resolve(__dirname, "../migrations/pg"))
+  )
+);
 
 const makeRuntime = <R, E, A>(layer: Layer.Layer<R, E, A>) =>
   Effect.gen(function* ($) {
@@ -71,15 +70,19 @@ export function runTestPromise<R extends TestLayer, E, A>(
 
 const TIMEOUT = 30000;
 
-export function usingTestLayer(transformer: TransformResultSync) {
+export function usingLayer(
+  layer: Layer.Layer<
+    never,
+    DatabaseError | ConfigError | MigrationError,
+    ConnectionPool
+  >
+) {
   beforeAll(
     async () =>
-      Effect.runPromise(makeRuntime(testLayer(transformer))).then(
-        ({ runtime, close }) => {
-          (globalThis as any).runtime = runtime;
-          (globalThis as any).close = close;
-        }
-      ),
+      Effect.runPromise(makeRuntime(layer)).then(({ runtime, close }) => {
+        (globalThis as any).runtime = runtime;
+        (globalThis as any).close = close;
+      }),
     TIMEOUT
   );
 

@@ -14,17 +14,27 @@ import {
   runRawQuery,
   transaction,
   connected,
+  AfterQueryHook,
+  afterQueryHook,
 } from "effect-sql/query";
 import { DatabaseError, NotFound, TooMany } from "effect-sql/errors";
 import { City, User, db } from "./pg.kysely.dsl";
 import { jsonAgg } from "./helpers/json";
-import { usingTestLayer } from "./helpers/layer";
+import { usingLayer, testLayer } from "./helpers/layer";
 
 const select = db.selectFrom("cities");
 const selectName = db.selectFrom("cities").select("name");
 const insert = (name: string) => db.insertInto("cities").values({ name });
 
-usingTestLayer(db);
+usingLayer(
+  Layer.provideMerge(
+    testLayer,
+    Layer.succeed(
+      AfterQueryHook,
+      afterQueryHook({ hook: (x) => db.transformResultSync(x) })
+    )
+  )
+);
 
 describe("pg – kysely", () => {
   it.pgtransaction("runQuery ==0", () =>
@@ -151,7 +161,6 @@ describe("pg – kysely", () => {
               databaseUrl: Config.succeed(
                 ConfigSecret.fromString("postgres://127.0.0.1:80")
               ),
-              transformer: db,
             })
           )
         ),
