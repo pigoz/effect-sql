@@ -29,19 +29,23 @@ import { ConfigError } from "@effect/io/Config/Error";
 import * as TaggedScope from "effect-sql/TaggedScope";
 
 import { DatabaseError, NotFound, TooMany } from "effect-sql/errors";
-
-import {
-  Compilable,
-  InferResult,
-  TransformResultSync,
-  compile,
-} from "effect-sql/builders/core";
+import { Compilable, InferResult, compile } from "effect-sql/builders/core";
 
 import pg from "pg";
 
+export interface AfterQueryHook extends Data.Case {
+  _tag: "AfterQueryHook";
+  hook: (res: QueryResult) => QueryResult;
+}
+
+export const AfterQueryHook = Context.Tag<AfterQueryHook>(
+  Symbol.for("pigoz/effect-sql/AfterQueryHook")
+);
+
+export const afterQueryHook = Data.tagged<AfterQueryHook>("AfterQueryHook");
+
 interface Client extends Data.Case {
   _tag: "Client";
-  transformer: TransformResultSync;
   native: pg.Client;
   savepoint: number;
 }
@@ -83,9 +87,9 @@ const defaultConfig = {
 type DatabaseConfig = typeof defaultConfig;
 
 export function ConnectionPoolScopedService(
-  config_: Partial<DatabaseConfig> & { transformer: TransformResultSync }
+  config_: Partial<DatabaseConfig>
 ): Effect.Effect<Scope.Scope, ConfigError, ConnectionPool> {
-  const { transformer, ...config } = config_;
+  const { ...config } = config_;
   const getConnectionString = pipe(
     Effect.config(Config.all({ ...defaultConfig, ...config })),
     Effect.map(({ databaseUrl, databaseName }) =>
@@ -119,7 +123,7 @@ export function ConnectionPoolScopedService(
           client.connect((error) => resume(pgErrorToEffect(error)))
         )
       ),
-      Effect.map((native) => makeClient({ native, transformer, savepoint: 0 }))
+      Effect.map((native) => makeClient({ native, savepoint: 0 }))
     );
 
     const disconnect = (client: Client) =>
@@ -171,7 +175,19 @@ export function runQuery<Builder extends Compilable<any>>(
   builder: Builder
 ): Effect.Effect<ConnectionPool, DatabaseError, InferResult<Builder>> {
   const sql = compile(builder);
-  return Effect.map(runRawQuery(sql.sql, sql.parameters), (_) => _.rows as any);
+  return pipe(
+    runRawQuery(sql.sql, sql.parameters),
+    Effect.flatMap((result) =>
+      Effect.match(
+        Effect.contextWithEffect((context: Context.Context<never>) =>
+          Context.getOption(context, AfterQueryHook)
+        ),
+        () => result,
+        (service) => service.hook(result)
+      )
+    ),
+    Effect.map((_) => _.rows as any)
+  );
 }
 
 function builderToError<Builder extends Compilable<any>>(builder: Builder) {
@@ -223,7 +239,10 @@ export function runQueryExactlyOne<
   );
 }
 
-export function runRawQuery(sql: string, parameters?: readonly unknown[]) {
+export function runRawQuery(
+  sql: string,
+  parameters?: readonly unknown[]
+): Effect.Effect<ConnectionPool, DatabaseError, QueryResult> {
   function QueryResultFromPg<O>(result: pg.QueryResult): QueryResult<O> {
     return {
       rowCount: result.rowCount === null ? undefined : BigInt(result.rowCount),
@@ -256,8 +275,7 @@ export function runRawQuery(sql: string, parameters?: readonly unknown[]) {
               }
             );
           }
-        ),
-        Effect.map((result) => client.transformer.transformResultSync(result))
+        )
       )
     ),
     connected

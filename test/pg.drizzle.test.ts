@@ -18,9 +18,9 @@ import {
 import { DatabaseError, NotFound, TooMany } from "effect-sql/errors";
 import { db } from "./pg.drizzle.dsl";
 import { cities } from "./pg.schema";
-import { usingTestLayer } from "./helpers/layer";
+import { usingLayer, testLayer } from "./helpers/layer";
 
-usingTestLayer(db);
+usingLayer(testLayer);
 
 const selectFromCities = db.select().from(cities);
 const selectNameFromCities = db.select({ name: cities.name }).from(cities);
@@ -164,7 +164,6 @@ describe("pg – drizzle", () => {
               databaseUrl: Config.succeed(
                 ConfigSecret.fromString("postgres://127.0.0.1:80")
               ),
-              transformer: db,
             })
           )
         ),
