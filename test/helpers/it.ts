@@ -1,7 +1,7 @@
 import * as V from "vitest";
 import * as Effect from "@effect/io/Effect";
 import { TestLayer, runTestPromise } from "./layer";
-import { transaction } from "effect-sql/pg";
+import { transaction } from "effect-sql/query";
 
 export type API = V.TestAPI<{}>;
 

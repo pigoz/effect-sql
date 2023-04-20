@@ -6,7 +6,7 @@ import {
   text,
   timestamp,
   varchar,
-} from "effect-sql/pg/schema";
+} from "effect-sql/schema/pg";
 
 export const role = pgEnum("role", ["admin", "user"]);
 

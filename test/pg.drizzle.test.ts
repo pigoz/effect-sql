@@ -14,7 +14,7 @@ import {
   runRawQuery,
   transaction,
   connected,
-} from "effect-sql/pg";
+} from "effect-sql/query";
 import { DatabaseError, NotFound, TooMany } from "effect-sql/errors";
 import { db } from "./pg.drizzle.dsl";
 import { cities } from "./pg.schema";

@@ -11,21 +11,18 @@ import {
   UnknownRow,
 } from "kysely";
 
-import { TransformResultSync } from "effect-sql/query";
+import { TransformResultSync } from "effect-sql/builders/core";
 
 type CamelCase<S extends string> =
   S extends `${infer P1}_${infer P2}${infer P3}`
     ? `${Lowercase<P1>}${Uppercase<P2>}${CamelCase<P3>}`
     : Lowercase<S>;
 
-export type ColumnsToCamelCase<T> = {
+type ColumnsToCamelCase<T> = {
   [K in keyof T as CamelCase<string & K>]: T[K];
 };
 
-export class SyncCamelCasePlugin
-  extends CamelCasePlugin
-  implements SyncKyselyPlugin
-{
+class SyncCamelCasePlugin extends CamelCasePlugin implements SyncKyselyPlugin {
   // same code from transformResult() withouth the pointless promise
   transformResultSync(
     args: Omit<PluginTransformResultArgs, "queryId">
