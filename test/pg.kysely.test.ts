@@ -14,10 +14,10 @@ import {
   runRawQuery,
   transaction,
   connected,
-} from "effect-sql/pg";
+} from "effect-sql/query";
 import { DatabaseError, NotFound, TooMany } from "effect-sql/errors";
 import { City, User, db } from "./pg.kysely.dsl";
-import { jsonAgg } from "effect-sql/pg/utils";
+import { jsonAgg } from "./helpers/json";
 import { usingTestLayer } from "./helpers/layer";
 
 const select = db.selectFrom("cities");

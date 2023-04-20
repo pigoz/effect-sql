@@ -8,11 +8,11 @@ import * as Context from "@effect/data/Context";
 
 import { PostgreSqlContainer } from "testcontainers";
 import * as path from "path";
-import { ConnectionPool, ConnectionPoolScopedService } from "effect-sql/pg";
+import { ConnectionPool, ConnectionPoolScopedService } from "effect-sql/query";
 import * as Config from "@effect/io/Config";
 import * as ConfigSecret from "@effect/io/Config/Secret";
-import { MigrationLayer } from "effect-sql/pg/schema";
-import { TransformResultSync } from "effect-sql/query";
+import { MigrationLayer } from "effect-sql/schema/pg";
+import { TransformResultSync } from "effect-sql/builders/core";
 
 import { afterAll, beforeAll } from "vitest";
 
