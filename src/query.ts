@@ -1,17 +1,3 @@
-export type UnknownRow = {
-  [x: string]: unknown;
-};
-
-export interface QueryResult<T = UnknownRow> {
-  rowCount?: bigint;
-  rows: T[];
-}
-
-export interface Compiled {
-  readonly sql: string;
-  readonly parameters: readonly unknown[];
-}
-
 import { identity, pipe } from "@effect/data/Function";
 import * as Effect from "@effect/io/Effect";
 import * as Data from "@effect/data/Data";
@@ -27,11 +13,17 @@ import * as ConfigSecret from "@effect/io/Config/Secret";
 import * as Pool from "@effect/io/Pool";
 import { ConfigError } from "@effect/io/Config/Error";
 import * as TaggedScope from "effect-sql/TaggedScope";
-
 import { DatabaseError, NotFound, TooMany } from "effect-sql/errors";
-import { Compilable, InferResult, compile } from "effect-sql/builders/core";
-
 import pg from "pg";
+
+export type UnknownRow = {
+  [x: string]: unknown;
+};
+
+export interface QueryResult<T = UnknownRow> {
+  rowCount?: bigint;
+  rows: T[];
+}
 
 export interface AfterQueryHook extends Data.Case {
   _tag: "AfterQueryHook";
@@ -171,79 +163,11 @@ export function connected<R, E, A>(
   );
 }
 
-export function runQuery<Builder extends Compilable<any>>(
-  builder: Builder
-): Effect.Effect<ConnectionPool, DatabaseError, InferResult<Builder>> {
-  const sql = compile(builder);
-  return pipe(
-    runRawQuery(sql.sql, sql.parameters),
-    Effect.flatMap((result) =>
-      Effect.match(
-        Effect.contextWithEffect((context: Context.Context<never>) =>
-          Context.getOption(context, AfterQueryHook)
-        ),
-        () => result,
-        (service) => service.hook(result)
-      )
-    ),
-    Effect.map((_) => _.rows as any)
-  );
-}
-
-function builderToError<Builder extends Compilable<any>>(builder: Builder) {
-  const compiled = compile(builder);
-  return { sql: compiled.sql, parameters: compiled.parameters };
-}
-
-export function runQueryOne<
-  Builder extends Compilable<any>,
-  Element extends InferResult<Builder> extends (infer X)[] ? X : never
->(
-  builder: Builder
-): Effect.Effect<ConnectionPool, DatabaseError | NotFound, Element> {
-  return pipe(
-    builder,
-    runQuery,
-    Effect.flatMap((result) =>
-      pipe(
-        REA.head(result as Element[]),
-        Either.fromOption(() => new NotFound(builderToError(builder)))
-      )
-    )
-  );
-}
-
-export function runQueryExactlyOne<
-  Builder extends Compilable<any>,
-  Element extends InferResult<Builder> extends (infer X)[] ? X : never
->(
-  builder: Builder
-): Effect.Effect<ConnectionPool, DatabaseError | NotFound | TooMany, Element> {
-  return pipe(
-    builder,
-    runQuery,
-    Effect.flatMap(
-      Effect.unifiedFn((x) => {
-        const [head, ...rest] = x as Element[];
-
-        if (rest.length > 0) {
-          return Effect.fail(new TooMany(builderToError(builder)));
-        }
-
-        return pipe(
-          head,
-          Either.fromNullable(() => new NotFound(builderToError(builder)))
-        );
-      })
-    )
-  );
-}
-
-export function runRawQuery(
+export function runQuery<A = UnknownRow>(
   sql: string,
   parameters?: readonly unknown[]
-): Effect.Effect<ConnectionPool, DatabaseError, QueryResult> {
-  function QueryResultFromPg<O>(result: pg.QueryResult): QueryResult<O> {
+): Effect.Effect<ConnectionPool, DatabaseError, QueryResult<A>> {
+  function QueryResultFromPg<A>(result: pg.QueryResult): QueryResult<A> {
     return {
       rowCount: result.rowCount === null ? undefined : BigInt(result.rowCount),
       rows: result.rows ?? [],
@@ -254,31 +178,83 @@ export function runRawQuery(
     Client,
     Effect.flatMap((client) =>
       pipe(
-        Effect.async<never, DatabaseError, QueryResult<UnknownRow>>(
-          (resume) => {
-            client.native.query(
-              { text: sql, values: parameters?.slice(0) },
-              (error: pg.DatabaseError, result: pg.QueryResult) => {
-                if (error) {
-                  resume(
-                    Effect.fail(
-                      new DatabaseError({
-                        code: error.code,
-                        name: "QueryError",
-                        message: error.message,
-                      })
-                    )
-                  );
-                } else {
-                  resume(Effect.succeed(QueryResultFromPg(result)));
-                }
+        Effect.async<never, DatabaseError, QueryResult>((resume) => {
+          client.native.query(
+            { text: sql, values: parameters?.slice(0) },
+            (error: pg.DatabaseError, result: pg.QueryResult) => {
+              if (error) {
+                resume(
+                  Effect.fail(
+                    new DatabaseError({
+                      code: error.code,
+                      name: "QueryError",
+                      message: error.message,
+                    })
+                  )
+                );
+              } else {
+                resume(Effect.succeed(QueryResultFromPg(result)));
               }
-            );
-          }
-        )
+            }
+          );
+        })
       )
     ),
-    connected
+    connected,
+    Effect.flatMap((result) =>
+      Effect.match(
+        Effect.contextWithEffect((context: Context.Context<never>) =>
+          Context.getOption(context, AfterQueryHook)
+        ),
+        () => result,
+        (service) => service.hook(result)
+      )
+    ),
+    Effect.map((x) => x as any)
+  );
+}
+
+export function runQueryOne<A>(
+  sql: string,
+  parameters?: readonly unknown[]
+): Effect.Effect<ConnectionPool, DatabaseError | NotFound, A> {
+  return pipe(
+    runQuery<A>(sql, parameters),
+    Effect.flatMap((result) =>
+      pipe(
+        REA.head(result.rows),
+        Either.fromOption(
+          () => new NotFound({ sql, parameters: parameters ?? [] })
+        )
+      )
+    )
+  );
+}
+
+export function runQueryExactlyOne<A>(
+  sql: string,
+  parameters?: readonly unknown[]
+): Effect.Effect<ConnectionPool, DatabaseError | NotFound | TooMany, A> {
+  return pipe(
+    runQuery<A>(sql, parameters),
+    Effect.flatMap(
+      Effect.unifiedFn((result) => {
+        const [head, ...rest] = result.rows;
+
+        if (rest.length > 0) {
+          return Effect.fail(
+            new TooMany({ sql, parameters: parameters ?? [] })
+          );
+        }
+
+        return pipe(
+          head,
+          Either.fromNullable(
+            () => new NotFound({ sql, parameters: parameters ?? [] })
+          )
+        );
+      })
+    )
   );
 }
 
@@ -300,18 +276,18 @@ export function transaction<R, E1, A>(
   options?: { test?: boolean }
 ) {
   const start = matchSavepoint(
-    (name) => runRawQuery(`SAVEPOINT ${name}`),
-    () => runRawQuery(`START TRANSACTION`)
+    (name) => runQuery(`SAVEPOINT ${name}`),
+    () => runQuery(`START TRANSACTION`)
   );
 
   const rollback = matchSavepoint(
-    (name) => runRawQuery(`ROLLBACK TO ${name}`),
-    () => runRawQuery(`ROLLBACK`)
+    (name) => runQuery(`ROLLBACK TO ${name}`),
+    () => runQuery(`ROLLBACK`)
   );
 
   const commit = matchSavepoint(
-    (name) => runRawQuery(`RELEASE SAVEPOINT ${name}`),
-    () => runRawQuery(`COMMIT`)
+    (name) => runQuery(`RELEASE SAVEPOINT ${name}`),
+    () => runQuery(`COMMIT`)
   );
 
   const bumpSavepoint = (c: Client) =>

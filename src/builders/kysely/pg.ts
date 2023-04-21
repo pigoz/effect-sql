@@ -9,14 +9,8 @@ import {
   QueryBuilderConfig,
 } from "effect-sql/builders/kysely";
 
-export { InferDatabase } from "effect-sql/builders/kysely";
-
-export function queryBuilderDsl<
-  T extends Record<string, unknown>,
-  O extends QueryBuilderConfig
->({ schema, options }: { schema: T; options: O }) {
-  return new QueryBuilderDsl({
-    schema,
+export function queryBuilderDsl<Database>(options: QueryBuilderConfig) {
+  return new QueryBuilderDsl<Database>({
     createAdapter: () => new PostgresAdapter(),
     createIntrospector: (db) => new PostgresIntrospector(db),
     createQueryCompiler: () => new PostgresQueryCompiler(),

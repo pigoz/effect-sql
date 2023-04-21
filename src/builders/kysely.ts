@@ -1,5 +1,11 @@
-import { Table } from "drizzle-orm";
-import { Kyselify } from "drizzle-orm/kysely";
+import * as Effect from "@effect/io/Effect";
+
+import {
+  runQuery as runRawQuery,
+  runQueryOne as runRawQueryOne,
+  runQueryExactlyOne as runRawQueryExactlyOne,
+} from "effect-sql/query";
+
 import {
   DummyDriver,
   Kysely,
@@ -9,18 +15,41 @@ import {
   PluginTransformResultArgs,
   QueryResult,
   UnknownRow,
+  Compilable,
+  InferResult,
 } from "kysely";
 
-import { TransformResultSync } from "effect-sql/builders/core";
+export function runQuery<
+  C extends Compilable<unknown>,
+  A extends InferResult<C>[number]
+>(compilable: C) {
+  const { sql, parameters } = compilable.compile();
+  return runRawQuery<A>(sql, parameters);
+}
 
-type CamelCase<S extends string> =
-  S extends `${infer P1}_${infer P2}${infer P3}`
-    ? `${Lowercase<P1>}${Uppercase<P2>}${CamelCase<P3>}`
-    : Lowercase<S>;
+export function runQueryRows<
+  C extends Compilable<any>,
+  A extends InferResult<C>[number]
+>(compilable: C) {
+  const { sql, parameters } = compilable.compile();
+  return Effect.map(runRawQuery<A>(sql, parameters), (result) => result.rows);
+}
 
-type ColumnsToCamelCase<T> = {
-  [K in keyof T as CamelCase<string & K>]: T[K];
-};
+export function runQueryOne<
+  C extends Compilable<unknown>,
+  A extends InferResult<C>[number]
+>(compilable: C) {
+  const { sql, parameters } = compilable.compile();
+  return runRawQueryOne<A>(sql, parameters);
+}
+
+export function runQueryExactlyOne<
+  C extends Compilable<unknown>,
+  A extends InferResult<C>[number]
+>(compilable: C) {
+  const { sql, parameters } = compilable.compile();
+  return runRawQueryExactlyOne<A>(sql, parameters);
+}
 
 class SyncCamelCasePlugin extends CamelCasePlugin implements SyncKyselyPlugin {
   // same code from transformResult() withouth the pointless promise
@@ -44,40 +73,15 @@ export interface SyncKyselyPlugin extends KyselyPlugin {
   ): QueryResult<UnknownRow>;
 }
 
-type InferDatabaseFromSchema<T extends Record<string, unknown>> = {
-  [K in keyof T as T[K] extends Table ? K : never]: T[K] extends Table
-    ? Kyselify<T[K]>
-    : never;
-};
-
-type CamelCaseDatabase<T extends InferDatabaseFromSchema<any>> = {
-  [K in keyof T]: ColumnsToCamelCase<T[K]>;
-};
-
-export type InferDatabase<T extends QueryBuilderDsl<any, any, any>> =
-  T extends QueryBuilderDsl<any, any, infer A> ? A : never;
-
 export interface QueryBuilderConfig {
   useCamelCaseTransformer?: boolean;
 }
 
-export class QueryBuilderDsl<
-    T extends Record<string, unknown>,
-    O extends QueryBuilderConfig,
-    Database = O["useCamelCaseTransformer"] extends true
-      ? CamelCaseDatabase<InferDatabaseFromSchema<T>>
-      : InferDatabaseFromSchema<T>
-  >
-  extends Kysely<Database>
-  implements TransformResultSync
-{
+export class QueryBuilderDsl<Database> extends Kysely<Database> {
   readonly #plugins: readonly SyncKyselyPlugin[];
 
   constructor(
-    config: {
-      schema: T;
-    } & Omit<KyselyConfig["dialect"], "createDriver"> &
-      O
+    config: Omit<KyselyConfig["dialect"], "createDriver"> & QueryBuilderConfig
   ) {
     const plugins: SyncKyselyPlugin[] = config.useCamelCaseTransformer
       ? [new SyncCamelCasePlugin()]
