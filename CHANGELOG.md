@@ -1,5 +1,11 @@
 # effect-sql
 
+## 0.0.27
+
+### Patch Changes
+
+- [#37](https://github.com/pigoz/effect-sql/pull/37) [`a4d5053`](https://github.com/pigoz/effect-sql/commit/a4d50538f573aae105712742857b6f4bb10239eb) Thanks [@pigoz](https://github.com/pigoz)! - big refactor to make everything optional
+
 ## 0.0.26
 
 ### Patch Changes
