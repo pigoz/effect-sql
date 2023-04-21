@@ -8,21 +8,23 @@ import { it, describe, expect } from "./helpers";
 import {
   ConnectionPool,
   ConnectionPoolScopedService,
-  runQuery,
-  runQueryExactlyOne,
-  runQueryOne,
-  runRawQuery,
+  runQuery as runRawQuery,
   transaction,
   connected,
   AfterQueryHook,
   afterQueryHook,
 } from "effect-sql/query";
+import {
+  runQueryRows,
+  runQueryExactlyOne,
+  runQueryOne,
+} from "effect-sql/builders/kysely";
 import { DatabaseError, NotFound, TooMany } from "effect-sql/errors";
 import { City, User, db } from "./pg.kysely.dsl";
 import { jsonAgg } from "./helpers/json";
 import { usingLayer, testLayer } from "./helpers/layer";
 
-const select = db.selectFrom("cities");
+const select = db.selectFrom("cities").selectAll();
 const selectName = db.selectFrom("cities").select("name");
 const insert = (name: string) => db.insertInto("cities").values({ name });
 
@@ -39,16 +41,16 @@ usingLayer(
 describe("pg – kysely", () => {
   it.pgtransaction("runQuery ==0", () =>
     Effect.gen(function* ($) {
-      expect((yield* $(select, runQuery)).length).toEqual(0);
+      expect((yield* $(select, runQueryRows)).length).toEqual(0);
     })
   );
 
   it.pgtransaction("runQuery ==2", () =>
     Effect.gen(function* ($) {
-      yield* $(insert("foo"), runQuery);
-      yield* $(insert("bar"), runQuery);
+      yield* $(insert("foo"), runQueryRows);
+      yield* $(insert("bar"), runQueryRows);
 
-      expect((yield* $(select, runQuery)).length).toEqual(2);
+      expect((yield* $(select, runQueryRows)).length).toEqual(2);
     })
   );
 
@@ -59,7 +61,7 @@ describe("pg – kysely", () => {
       expect(res1).toEqual(
         E.left(
           new NotFound({
-            sql: 'select from "cities"',
+            sql: 'select * from "cities"',
             parameters: [],
           })
         )
@@ -69,7 +71,7 @@ describe("pg – kysely", () => {
 
   it.pgtransaction("runQueryOne ==1: finds record", () =>
     Effect.gen(function* ($) {
-      yield* $(insert("foo"), runQuery);
+      yield* $(insert("foo"), runQueryRows);
 
       const res2 = yield* $(selectName, runQueryOne, Effect.either);
       expect(res2).toEqual(E.right({ name: "foo" }));
@@ -78,8 +80,8 @@ describe("pg – kysely", () => {
 
   it.pgtransaction("runQueryOne ==2: finds record", () =>
     Effect.gen(function* ($) {
-      yield* $(insert("foo"), runQuery);
-      yield* $(insert("bar"), runQuery);
+      yield* $(insert("foo"), runQueryRows);
+      yield* $(insert("bar"), runQueryRows);
 
       const res2 = yield* $(selectName, runQueryOne, Effect.either);
 
@@ -94,7 +96,7 @@ describe("pg – kysely", () => {
       expect(res1).toEqual(
         E.left(
           new NotFound({
-            sql: 'select from "cities"',
+            sql: 'select * from "cities"',
             parameters: [],
           })
         )
@@ -104,7 +106,7 @@ describe("pg – kysely", () => {
 
   it.pgtransaction("runQueryExactlyOne ==1: finds record", () =>
     Effect.gen(function* ($) {
-      yield* $(insert("foo"), runQuery);
+      yield* $(insert("foo"), runQueryRows);
 
       const res2 = yield* $(selectName, runQueryExactlyOne, Effect.either);
       expect(res2).toEqual(E.right({ name: "foo" }));
@@ -113,8 +115,8 @@ describe("pg – kysely", () => {
 
   it.pgtransaction("runQueryExactlyOne ==2: finds record", () =>
     Effect.gen(function* ($) {
-      yield* $(insert("foo"), runQuery);
-      yield* $(insert("bar"), runQuery);
+      yield* $(insert("foo"), runQueryRows);
+      yield* $(insert("bar"), runQueryRows);
 
       const res2 = yield* $(selectName, runQueryExactlyOne, Effect.either);
 
@@ -153,7 +155,7 @@ describe("pg – kysely", () => {
     Effect.gen(function* ($) {
       const res = yield* $(
         select,
-        runQuery,
+        runQueryRows,
         Effect.provideSomeLayer(
           Layer.scoped(
             ConnectionPool,
@@ -182,18 +184,18 @@ describe("pg – kysely", () => {
     Effect.gen(function* ($) {
       const count = pipe(
         select,
-        runQuery,
+        runQueryRows,
         Effect.map((_) => _.length)
       );
 
-      yield* $(insert("foo"), runQuery, transaction);
+      yield* $(insert("foo"), runQueryRows, transaction);
       expect(yield* $(count)).toEqual(1);
 
-      yield* $(insert("foo"), runQuery, transaction);
+      yield* $(insert("foo"), runQueryRows, transaction);
       expect(yield* $(count)).toEqual(2);
 
       yield* $(
-        Effect.all(runQuery(insert("foo")), Effect.fail("fail")),
+        Effect.all(runQueryRows(insert("foo")), Effect.fail("fail")),
         transaction,
         Effect.either
       );
@@ -222,7 +224,7 @@ describe("pg – kysely", () => {
 
   it.pgtransaction("respects case", () =>
     Effect.gen(function* ($) {
-      yield* $(insert("Foo"), runQuery);
+      yield* $(insert("Foo"), runQueryRows);
 
       const res2 = yield* $(
         db.selectFrom("cities").select("name as cityName"),
@@ -292,7 +294,7 @@ describe("pg – kysely", () => {
                 .orderBy("visits.value", "desc")
             ).as("visited")
           ),
-        runQuery
+        runQueryRows
       );
 
       expect(manyToManySub[0]?.id).toEqual(factory.haruhi.id);

@@ -1,28 +1,64 @@
 # effect-sql
 
-SQL Databases with Effect!
+Relational Databases with Effect!
 
-This project is a mashup of a few fantastic libraries to handle SQL databases
-in TypeScript.
+This project is trying to become a one stop shop to deal with databases in [Effect](https://github.com/Effect-TS).
 
-  - [Drizzle](https://github.com/drizzle-team/drizzle-orm) for TypeScript-first
-    schema declaration (and migrations!)
-  - [Kysely](https://github.com/kysely-org/kysely) as a Query Builder
+It's composed of several decoupled pieces, from which you should be able to pick and choose whatever you want.
 
-  - Custom code to make the Effect experience as nice as possible:
-    - Layer to manage the ConnectionPool
-    - Layer to run migrations (of course this is opt-in)
+  - `effect-sql/query` is a wrapper over Node database drivers. It provides an Effectful interface to operate with raw SQL strings and little overhead. A spiritual alternative to `effect-pg`, `effect-mysql`, and such. It includes:
+    - Layer to manage the ConnectionPool using Effect's Pool
     - Query operators with tagged errors in the failure channel
     - DSL for nested transactions (using savepoints!)
+    - (*Planned*): Driver based abstraction to support multiple database engines (⚠️focusing on getting PostgreSQL right now)
+    - (*Planned*): Non pooled connections (i.e. PlanetScale)
 
-⚠️ Under development, working on PostgreSQL (and dogfooding) right now.
-  Will add SQLite and MySQL when the PostgreSQL API is stable.
+  - `effect-sql/schema`: (*optional*) TypeScript-first schema declaration based on [Drizzle](https://github.com/drizzle-team/drizzle-orm). Features:
+    - Infer Kysely database using `effect-sql/schema/kysely`.
+    - (*Planned*): Derive @effect/schema types
+    - (*Planned*): Derive fast check arbitraries
 
-### Example
+  - `effect-sql/builders/*`: (*optional*) Query builders to create typesafe queries and to execute them. They are built on top of `effect-sql/query`
+    - [Kysely](https://github.com/kysely-org/kysely): "blessed" solution
+    - [Drizzle](https://github.com/drizzle-team/drizzle-orm): "toy" solution, see [Drizzle as a Query Builder](#drizzle-as-a-query-builder) in this README.
+
+### Raw SQL Example (minimal!)
+```typescript
+// app.ts
+import {
+  runQuery,
+  runQueryOne,
+  runQueryExactlyOne,
+  ConnectionPool,
+  ConnectionPoolScopedService,
+} from "effect-sql/query";
+
+const post1 = runQuery(`select * from "posts"`);
+//    ^ Effect<ConnectionPool, DatabaseError, QueryResult<UnknownRow>>
+
+const post2 = runQueryOne(`select * from "posts" where id = 1`);
+//    ^ Effect<ConnectionPool, DatabaseError | NotFound, UnknownRow>
+
+const post3 = runQueryExactlyOne(`select * from "posts" where id = 1`);
+//    ^ Effect<ConnectionPool, DatabaseError | NotFound | TooMany, UnknownRow>
+
+const ConnectionPoolLive = Layer.scoped(
+  ConnectionPool,
+  ConnectionPoolScopedService(),
+);
+
+pipe(
+  post3,
+  Effect.provideLayer(ConnectionPoolLive)
+  Effect.runFork
+);
+```
+
+### Full Example (Schema + Query Builder + Camelization)
 
 ```typescript
 // schema.ts
-import { pgTable, serial, text } from "effect-sql/pg/schema"
+import { pgTable, serial, text } from "effect-sql/schema/pg"
 
 const posts = pgTable("posts", {
   id: serial("id").primaryKey(),
@@ -32,13 +68,16 @@ const posts = pgTable("posts", {
 
 ```typescript
 // dsl.ts
-import { InferDatabase, createQueryDsl } from "effect-sql/pg/schema/kysely";
+import { queryBuilderDsl } from "effect-sql/builders/kysely/pg";
+import { InferDatabaseFromConfig } from "effect-sql/schema/kysely";
 import { Selectable } from "kysely";
 
 import * as schema from "./schema.ts";
 
-export const db = queryBuilderDsl(schema, { useCamelCaseTransformer: true });
-interface Database extends InferDatabase<typeof db> {}
+const config = { useCamelCaseTransformer: true };
+interface Database
+  extends InferDatabaseFromConfig<typeof schema, typeof config> {}
+export const db = queryBuilderDsl<Database>(config);
 
 export interface Post extends Selectable<Database["posts"]> {}
 ```
@@ -49,13 +88,14 @@ import {
   runQuery,
   runQueryOne,
   runQueryExactlyOne,
-  transaction
-} from "effect-sql/pg";
+} from "effect-sql/builders/kysely";
+
+import { transaction } from "effect-sql/query";
 
 import { db } from "./dsl.ts";
 
 const post1 = runQuery(db.selectFrom("posts"));
-//    ^ Effect<ConnectionPool, DatabaseError, { id: number, name: string }>
+//    ^ Effect<ConnectionPool, DatabaseError, QueryResult<{ id: number, name: string }>>
 
 const post2 = runQueryOne(db.selectFrom("posts"));
 //    ^ Effect<ConnectionPool, DatabaseError | NotFound, { id: number, name: string }>
@@ -71,22 +111,36 @@ transaction(Effect.all(
   )),
 ))
 
-import { ConnectionPool, ConnectionPoolScopedService } from "effect-sql/pg";
+import {
+  ConnectionPool,
+  ConnectionPoolScopedService,
+  AfterQueryHook,
+  afterQueryHook
+} from "effect-sql/query";
 
 const ConnectionPoolLive = Layer.scoped(
   ConnectionPool,
+  ConnectionPoolScopedService(),
+);
 
-  // transformer picks up on the useCamelCaseTransformer configuration option
-  // used above and handles camelization of query results
-  ConnectionPoolScopedService({ transformer: db })
+// Hook that picks up the useCamelCaseTransformer configuration option
+// used above and handles camelization of QueryResult rows
+const AfterQueryHookLive = Layer.succeed(
+  AfterQueryHook,
+  afterQueryHook({ hook: (x) => db.transformResultSync(x) })
 );
 
 pipe(
   post3,
-  Effect.provideLayer(ConnectionPoolLive),
+  Effect.provideLayer(
+    Effect.provideMerge(
+      ConnectionPoolLive,
+      AfterQueryHookLive
+    )),
   Effect.runFork
 )
 ```
+
 
 [Please check the tests for more complete examples!](https://github.com/pigoz/effect-sql/tree/main/test)
 

@@ -1,8 +1,5 @@
-import { NodePgDatabase, drizzle } from "drizzle-orm/node-postgres/driver.js";
-import { TransformResultSync } from "effect-sql/builders/core";
+import { drizzle } from "drizzle-orm/node-postgres/driver.js";
 
-type Dsl = NodePgDatabase & TransformResultSync;
-
-export function queryBuilderDsl(): Dsl {
-  return drizzle(Symbol.for("postgres-stub") as any) as Dsl;
+export function queryBuilderDsl() {
+  return drizzle(Symbol.for("postgres-stub") as any);
 }

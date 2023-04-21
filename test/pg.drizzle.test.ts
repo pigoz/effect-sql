@@ -8,13 +8,15 @@ import { it, describe, expect } from "./helpers";
 import {
   ConnectionPool,
   ConnectionPoolScopedService,
-  runQuery,
-  runQueryExactlyOne,
-  runQueryOne,
-  runRawQuery,
+  runQuery as runRawQuery,
   transaction,
   connected,
 } from "effect-sql/query";
+import {
+  runQueryRows,
+  runQueryOne,
+  runQueryExactlyOne,
+} from "effect-sql/builders/drizzle";
 import { DatabaseError, NotFound, TooMany } from "effect-sql/errors";
 import { db } from "./pg.drizzle.dsl";
 import { cities } from "./pg.schema";
@@ -29,15 +31,15 @@ const insertCity = (name: string) => db.insert(cities).values({ name });
 describe("pg – drizzle", () => {
   it.pgtransaction("runQuery ==0", () =>
     Effect.gen(function* ($) {
-      expect((yield* $(selectFromCities, runQuery)).length).toEqual(0);
+      expect((yield* $(selectFromCities, runQueryRows)).length).toEqual(0);
     })
   );
 
   it.pgtransaction("runQuery ==2", () =>
     Effect.gen(function* ($) {
-      yield* $(insertCity("Foo"), runQuery);
-      yield* $(insertCity("Bar"), runQuery);
-      expect((yield* $(selectFromCities, runQuery)).length).toEqual(2);
+      yield* $(insertCity("Foo"), runQueryRows);
+      yield* $(insertCity("Bar"), runQueryRows);
+      expect((yield* $(selectFromCities, runQueryRows)).length).toEqual(2);
     })
   );
 
@@ -58,7 +60,7 @@ describe("pg – drizzle", () => {
 
   it.pgtransaction("runQueryOne ==1: finds record", () =>
     Effect.gen(function* ($) {
-      yield* $(insertCity("Foo"), runQuery);
+      yield* $(insertCity("Foo"), runQueryRows);
 
       const res2 = yield* $(selectNameFromCities, runQueryOne, Effect.either);
 
@@ -68,8 +70,8 @@ describe("pg – drizzle", () => {
 
   it.pgtransaction("runQueryOne ==2: finds record", () =>
     Effect.gen(function* ($) {
-      yield* $(insertCity("Foo"), runQuery);
-      yield* $(insertCity("Bar"), runQuery);
+      yield* $(insertCity("Foo"), runQueryRows);
+      yield* $(insertCity("Bar"), runQueryRows);
 
       const res2 = yield* $(selectNameFromCities, runQueryOne, Effect.either);
 
@@ -98,7 +100,7 @@ describe("pg – drizzle", () => {
 
   it.pgtransaction("runQueryExactlyOne ==1: finds record", () =>
     Effect.gen(function* ($) {
-      yield* $(insertCity("Foo"), runQuery);
+      yield* $(insertCity("Foo"), runQueryRows);
 
       const res2 = yield* $(
         selectNameFromCities,
@@ -112,8 +114,8 @@ describe("pg – drizzle", () => {
 
   it.pgtransaction("runQueryExactlyOne ==2: finds record", () =>
     Effect.gen(function* ($) {
-      yield* $(insertCity("Foo"), runQuery);
-      yield* $(insertCity("Bar"), runQuery);
+      yield* $(insertCity("Foo"), runQueryRows);
+      yield* $(insertCity("Bar"), runQueryRows);
 
       const res2 = yield* $(
         selectNameFromCities,
@@ -156,7 +158,7 @@ describe("pg – drizzle", () => {
     Effect.gen(function* ($) {
       const res = yield* $(
         selectFromCities,
-        runQuery,
+        runQueryRows,
         Effect.provideSomeLayer(
           Layer.scoped(
             ConnectionPool,
@@ -185,11 +187,11 @@ describe("pg – drizzle", () => {
     Effect.gen(function* ($) {
       const count = pipe(
         selectFromCities,
-        runQuery,
+        runQueryRows,
         Effect.map((_) => _.length)
       );
 
-      const insert = runQuery(insertCity("Foo"));
+      const insert = runQueryRows(insertCity("Foo"));
 
       yield* $(insert, transaction);
       expect(yield* $(count)).toEqual(1);
@@ -227,7 +229,7 @@ describe("pg – drizzle", () => {
 
   it.pgtransaction.fails("respects case", () =>
     Effect.gen(function* ($) {
-      yield* $(insertCity("Foo"), runQuery);
+      yield* $(insertCity("Foo"), runQueryRows);
 
       const res2 = yield* $(
         db.select({ cityName: cities.name }).from(cities),

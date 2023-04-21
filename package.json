@@ -50,9 +50,12 @@
   },
   "dependencies": {
     "@effect/data": "^0.12.2",
-    "@effect/io": "^0.22.4",
+    "@effect/io": "^0.22.4"
+  },
+  "optionalDependencies": {
     "drizzle-orm": "^0.24.0",
-    "kysely": "^0.24.2"
+    "kysely": "^0.24.2",
+    "pg": "^8.10.0"
   },
   "devDependencies": {
     "@babel/cli": "^7.21.0",
@@ -74,7 +77,6 @@
     "drizzle-kit": "^0.17.4",
     "glob": "^10.2.1",
     "madge": "^6.0.0",
-    "pg": "^8.10.0",
     "picocolors": "^1.0.0",
     "rimraf": "^5.0.0",
     "skott": "^0.20.0",
