@@ -93,7 +93,7 @@ devDependencies:
     specifier: ^5.0.4
     version: 5.0.4
   vite:
-    specifier: ^4.2.1
+    specifier: ^4.3.1
     version: 4.3.1(@types/node@18.15.11)
   vite-tsconfig-paths:
     specifier: ^4.2.0
