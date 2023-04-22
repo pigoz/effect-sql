@@ -100,7 +100,7 @@ export class QueryBuilderDsl<Database> extends Kysely<Database> {
     this.#plugins = plugins;
   }
 
-  transformResultSync(result: PluginTransformResultArgs["result"]) {
+  afterQueryHook(result: PluginTransformResultArgs["result"]) {
     this.#plugins.forEach((plugin) => {
       result = plugin.transformResultSync({ result });
     });

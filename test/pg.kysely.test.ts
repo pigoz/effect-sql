@@ -34,7 +34,7 @@ usingLayer(
     testLayer,
     Layer.succeed(
       AfterQueryHook,
-      afterQueryHook({ hook: (x) => db.transformResultSync(x) })
+      afterQueryHook({ hook: (_) => db.afterQueryHook(_) })
     )
   )
 );

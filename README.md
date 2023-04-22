@@ -127,7 +127,7 @@ const ConnectionPoolLive = Layer.scoped(
 // used above and handles camelization of QueryResult rows
 const AfterQueryHookLive = Layer.succeed(
   AfterQueryHook,
-  afterQueryHook({ hook: (x) => db.transformResultSync(x) })
+  afterQueryHook({ hook: (queryResult) => db.afterQueryHook(queryResult) })
 );
 
 pipe(
