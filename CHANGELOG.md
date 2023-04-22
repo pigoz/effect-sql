@@ -1,5 +1,11 @@
 # effect-sql
 
+## 0.0.28
+
+### Patch Changes
+
+- [`c4c7fc2`](https://github.com/pigoz/effect-sql/commit/c4c7fc2b643b080e611198c21af8d1699185c7ef) Thanks [@pigoz](https://github.com/pigoz)! - add initial driver abstraction
+
 ## 0.0.27
 
 ### Patch Changes
