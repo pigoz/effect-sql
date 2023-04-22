@@ -23,6 +23,7 @@ import { DatabaseError, NotFound, TooMany } from "effect-sql/errors";
 import { City, User, db } from "./pg.kysely.dsl";
 import { jsonAgg } from "./helpers/json";
 import { usingLayer, testLayer } from "./helpers/layer";
+import { Driver } from "effect-sql/drivers/pg";
 
 const select = db.selectFrom("cities").selectAll();
 const selectName = db.selectFrom("cities").select("name");
@@ -159,7 +160,7 @@ describe("pg – kysely", () => {
         Effect.provideSomeLayer(
           Layer.scoped(
             ConnectionPool,
-            ConnectionPoolScopedService({
+            ConnectionPoolScopedService(Driver(), {
               databaseUrl: Config.succeed(
                 ConfigSecret.fromString("postgres://127.0.0.1:80")
               ),

@@ -16,6 +16,7 @@ import { MigrationLayer } from "effect-sql/schema/pg";
 import { afterAll, beforeAll } from "vitest";
 import { DatabaseError, MigrationError } from "effect-sql/errors";
 import { ConfigError } from "@effect/io/Config/Error";
+import { Driver as PostgreSqlDriver } from "effect-sql/drivers/pg";
 
 export const testContainer = pipe(
   Effect.promise(async () => {
@@ -36,7 +37,7 @@ export const testLayer = pipe(
   Layer.scoped(
     ConnectionPool,
     Effect.flatMap(testContainer, (uri) =>
-      ConnectionPoolScopedService({
+      ConnectionPoolScopedService(PostgreSqlDriver(), {
         databaseUrl: Config.succeed(ConfigSecret.fromString(uri)),
       })
     )

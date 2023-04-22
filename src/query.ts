@@ -14,7 +14,6 @@ import * as Pool from "@effect/io/Pool";
 import { ConfigError } from "@effect/io/Config/Error";
 import * as TaggedScope from "effect-sql/TaggedScope";
 import { DatabaseError, NotFound, TooMany } from "effect-sql/errors";
-import pg from "pg";
 
 export type UnknownRow = {
   [x: string]: unknown;
@@ -36,9 +35,9 @@ export const AfterQueryHook = Context.Tag<AfterQueryHook>(
 
 export const afterQueryHook = Data.tagged<AfterQueryHook>("AfterQueryHook");
 
-interface Client extends Data.Case {
+export interface Client<A = unknown> extends Data.Case {
   _tag: "Client";
-  native: pg.Client;
+  native: A;
   savepoint: number;
 }
 
@@ -52,10 +51,11 @@ export const ConnectionScope = TaggedScope.Tag<ConnectionScope>(
   Symbol.for("pigoz/effect-sql/ConnectionScope")
 );
 
-const makeClient = Data.tagged<Client>("Client");
+export const makeClient = Data.tagged<Client>("Client");
 
 export interface ConnectionPool extends Data.Case {
   _tag: "ConnectionPool";
+  driver: Driver<Client>;
   pool: Pool.Pool<DatabaseError, Client>;
 }
 
@@ -64,6 +64,16 @@ export const ConnectionPool = Context.Tag<ConnectionPool>(
 );
 
 const makeConnectionPool = Data.tagged<ConnectionPool>("ConnectionPool");
+
+export interface Driver<C extends Client> {
+  connect(connectionString: string): Effect.Effect<never, DatabaseError, C>;
+  disconnect(client: C): Effect.Effect<never, never, void>;
+  runQuery(
+    client: C,
+    sql: string,
+    params: readonly unknown[]
+  ): Effect.Effect<never, DatabaseError, QueryResult<UnknownRow>>;
+}
 
 const defaultConfig = {
   databaseUrl: Config.secret("DATABASE_URL"),
@@ -79,6 +89,7 @@ const defaultConfig = {
 type DatabaseConfig = typeof defaultConfig;
 
 export function ConnectionPoolScopedService(
+  driver: Driver<Client>,
   config_: Partial<DatabaseConfig>
 ): Effect.Effect<Scope.Scope, ConfigError, ConnectionPool> {
   const { ...config } = config_;
@@ -97,36 +108,11 @@ export function ConnectionPoolScopedService(
     )
   );
 
-  const pgErrorToEffect = (error?: Error) =>
-    error
-      ? Effect.fail(
-          new DatabaseError({
-            name: "ConnectionPoolError",
-            message: error.message,
-          })
-        )
-      : Effect.unit();
-
   const createConnectionPool = (connectionString: string) => {
-    const connect = pipe(
-      Effect.sync(() => new pg.Client({ connectionString })),
-      Effect.tap((client) =>
-        Effect.async<never, DatabaseError, void>((resume) =>
-          client.connect((error) => resume(pgErrorToEffect(error)))
-        )
-      ),
-      Effect.map((native) => makeClient({ native, savepoint: 0 }))
+    const get = Effect.acquireRelease(
+      driver.connect(connectionString),
+      driver.disconnect
     );
-
-    const disconnect = (client: Client) =>
-      pipe(
-        Effect.async<never, DatabaseError, void>((resume) =>
-          client.native.end((error) => resume(pgErrorToEffect(error)))
-        ),
-        Effect.orDie
-      );
-
-    const get = Effect.acquireRelease(connect, disconnect);
 
     return Pool.makeWithTTL(get, 1, 20, Duration.seconds(60));
   };
@@ -134,7 +120,7 @@ export function ConnectionPoolScopedService(
   return pipe(
     getConnectionString,
     Effect.flatMap(createConnectionPool),
-    Effect.map((pool) => makeConnectionPool({ pool }))
+    Effect.map((pool) => makeConnectionPool({ pool, driver }))
   );
 }
 
@@ -167,38 +153,10 @@ export function runQuery<A = UnknownRow>(
   sql: string,
   parameters?: readonly unknown[]
 ): Effect.Effect<ConnectionPool, DatabaseError, QueryResult<A>> {
-  function QueryResultFromPg<A>(result: pg.QueryResult): QueryResult<A> {
-    return {
-      rowCount: result.rowCount === null ? undefined : BigInt(result.rowCount),
-      rows: result.rows ?? [],
-    };
-  }
-
   return pipe(
-    Client,
-    Effect.flatMap((client) =>
-      pipe(
-        Effect.async<never, DatabaseError, QueryResult>((resume) => {
-          client.native.query(
-            { text: sql, values: parameters?.slice(0) },
-            (error: pg.DatabaseError, result: pg.QueryResult) => {
-              if (error) {
-                resume(
-                  Effect.fail(
-                    new DatabaseError({
-                      code: error.code,
-                      name: "QueryError",
-                      message: error.message,
-                    })
-                  )
-                );
-              } else {
-                resume(Effect.succeed(QueryResultFromPg(result)));
-              }
-            }
-          );
-        })
-      )
+    Effect.all({ client: Client, pool: ConnectionPool }),
+    Effect.flatMap(({ client, pool }) =>
+      pool.driver.runQuery(client, sql, parameters ?? [])
     ),
     connected,
     Effect.flatMap((result) =>

@@ -8,6 +8,7 @@ import { MigrationError } from "effect-sql/errors";
 
 import { drizzle } from "drizzle-orm/node-postgres/driver.js";
 import { migrate as dmigrate } from "drizzle-orm/node-postgres/migrator.js";
+import { NodePgClient } from "drizzle-orm/node-postgres/session.js";
 
 export * from "drizzle-orm/pg-core/index.js";
 
@@ -23,7 +24,8 @@ export function migrate(migrationsFolder: string) {
     Effect.flatMap((client) =>
       Effect.tryCatchPromise(
         () => {
-          const d = drizzle(client.native);
+          // XXX figure out how to remove the cast
+          const d = drizzle(client.native as NodePgClient);
           return dmigrate(d, { migrationsFolder });
         },
         (error) => new MigrationError({ error })

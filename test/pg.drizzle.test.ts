@@ -21,6 +21,7 @@ import { DatabaseError, NotFound, TooMany } from "effect-sql/errors";
 import { db } from "./pg.drizzle.dsl";
 import { cities } from "./pg.schema";
 import { usingLayer, testLayer } from "./helpers/layer";
+import { Driver } from "effect-sql/drivers/pg";
 
 usingLayer(testLayer);
 
@@ -162,7 +163,7 @@ describe("pg – drizzle", () => {
         Effect.provideSomeLayer(
           Layer.scoped(
             ConnectionPool,
-            ConnectionPoolScopedService({
+            ConnectionPoolScopedService(Driver(), {
               databaseUrl: Config.succeed(
                 ConfigSecret.fromString("postgres://127.0.0.1:80")
               ),
