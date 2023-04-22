@@ -2,7 +2,13 @@ import * as Effect from "@effect/io/Effect";
 import { DatabaseError } from "effect-sql/errors";
 import pg from "pg";
 import { pipe } from "@effect/data/Function";
-import { Client, Driver, QueryResult, makeClient } from "effect-sql/query";
+import {
+  Client,
+  Driver,
+  QueryResult,
+  runQuery,
+  makeClient,
+} from "effect-sql/query";
 
 const ErrorFromPg = (error?: Error) =>
   error
@@ -33,7 +39,11 @@ export function Driver<C extends Client<pg.Client>>(): Driver<C> {
       Effect.map((native) => makeClient({ native, savepoint: 0 }) as C)
     );
 
-  const runQuery = (client: C, sql: string, parameters: readonly unknown[]) =>
+  const runQueryImpl = (
+    client: C,
+    sql: string,
+    parameters: readonly unknown[]
+  ) =>
     pipe(
       Effect.async<never, DatabaseError, QueryResult>((resume) => {
         client.native.query(
@@ -67,7 +77,22 @@ export function Driver<C extends Client<pg.Client>>(): Driver<C> {
 
   return {
     connect,
-    runQuery,
+    runQuery: runQueryImpl,
     disconnect,
+
+    start: {
+      transaction: () => runQuery(`START TRANSACTION`),
+      savepoint: (name: string) => runQuery(`SAVEPOINT ${name}`),
+    },
+
+    rollback: {
+      transaction: () => runQuery(`ROLLBACK`),
+      savepoint: (name: string) => runQuery(`ROLLBACK TO ${name}`),
+    },
+
+    commit: {
+      transaction: () => runQuery(`COMMIT`),
+      savepoint: (name: string) => runQuery(`RELEASE SAVEPOINT ${name}`),
+    },
   };
 }

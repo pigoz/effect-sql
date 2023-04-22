@@ -65,14 +65,32 @@ export const ConnectionPool = Context.Tag<ConnectionPool>(
 
 const makeConnectionPool = Data.tagged<ConnectionPool>("ConnectionPool");
 
-export interface Driver<C extends Client> {
+export interface Driver<
+  C extends Client = Client,
+  Query = Effect.Effect<ConnectionPool, DatabaseError, QueryResult>
+> {
   connect(connectionString: string): Effect.Effect<never, DatabaseError, C>;
   disconnect(client: C): Effect.Effect<never, never, void>;
   runQuery(
     client: C,
     sql: string,
     params: readonly unknown[]
-  ): Effect.Effect<never, DatabaseError, QueryResult<UnknownRow>>;
+  ): Effect.Effect<never, DatabaseError, QueryResult>;
+
+  start: {
+    savepoint(name: string): Query;
+    transaction(): Query;
+  };
+
+  rollback: {
+    savepoint(name: string): Query;
+    transaction(): Query;
+  };
+
+  commit: {
+    savepoint(name: string): Query;
+    transaction(): Query;
+  };
 }
 
 const defaultConfig = {
@@ -216,37 +234,31 @@ export function runQueryExactlyOne<A>(
   );
 }
 
-const matchSavepoint = <R1, R2, E1, E2, A1, A2>(
-  onPositive: (name: string) => Effect.Effect<R1, E1, A1>,
-  onZero: () => Effect.Effect<R2, E2, A2>
-): Effect.Effect<Client | R1 | R2, E1 | E2, A1 | A2> =>
+type DriverQuery = Effect.Effect<ConnectionPool, DatabaseError, QueryResult>;
+
+const matchSavepoint = (
+  fn: (driver: Driver) => {
+    savepoint: (name: string) => DriverQuery;
+    transaction: () => DriverQuery;
+  }
+) =>
   Effect.flatMap(
-    Client,
-    Effect.unifiedFn((client) =>
-      client.savepoint > 0
-        ? onPositive(`savepoint_${client.savepoint}`)
-        : onZero()
-    )
+    Effect.all({ client: Client, pool: ConnectionPool }),
+    ({ client, pool }) => {
+      const implementation = fn(pool.driver);
+      return client.savepoint > 0
+        ? implementation.savepoint(`savepoint_${client.savepoint}`)
+        : implementation.transaction();
+    }
   );
 
 export function transaction<R, E1, A>(
   self: Effect.Effect<R, E1, A>,
   options?: { test?: boolean }
 ) {
-  const start = matchSavepoint(
-    (name) => runQuery(`SAVEPOINT ${name}`),
-    () => runQuery(`START TRANSACTION`)
-  );
-
-  const rollback = matchSavepoint(
-    (name) => runQuery(`ROLLBACK TO ${name}`),
-    () => runQuery(`ROLLBACK`)
-  );
-
-  const commit = matchSavepoint(
-    (name) => runQuery(`RELEASE SAVEPOINT ${name}`),
-    () => runQuery(`COMMIT`)
-  );
+  const start = matchSavepoint((driver) => driver.start);
+  const rollback = matchSavepoint((driver) => driver.rollback);
+  const commit = matchSavepoint((driver) => driver.commit);
 
   const bumpSavepoint = (c: Client) =>
     makeClient({ ...c, savepoint: c.savepoint + 1 });
