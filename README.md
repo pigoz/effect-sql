@@ -69,15 +69,13 @@ const posts = pgTable("posts", {
 ```typescript
 // dsl.ts
 import { queryBuilderDsl } from "effect-sql/builders/kysely/pg";
-import { InferDatabaseFromConfig } from "effect-sql/schema/kysely";
+import { InferDatabase } from "effect-sql/schema/kysely";
 import { Selectable } from "kysely";
 
 import * as schema from "./schema.ts";
 
-const config = { useCamelCaseTransformer: true };
-interface Database
-  extends InferDatabaseFromConfig<typeof schema, typeof config> {}
-export const db = queryBuilderDsl<Database>(config);
+interface Database extends CamelCase<InferDatabase<typeof schema>> {}
+export const db = queryBuilderDsl<Database>({ useCamelCaseTransformer: true });
 
 export interface Post extends Selectable<Database["posts"]> {}
 ```
