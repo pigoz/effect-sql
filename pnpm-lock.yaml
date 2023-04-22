@@ -5,8 +5,8 @@ dependencies:
     specifier: ^0.12.2
     version: 0.12.2
   '@effect/io':
-    specifier: ^0.22.4
-    version: 0.22.4
+    specifier: ^0.25.1
+    version: 0.25.1
 
 optionalDependencies:
   drizzle-orm:
@@ -94,10 +94,10 @@ devDependencies:
     version: 5.0.4
   vite:
     specifier: ^4.2.1
-    version: 4.2.1(@types/node@18.15.11)
+    version: 4.3.1(@types/node@18.15.11)
   vite-tsconfig-paths:
     specifier: ^4.2.0
-    version: 4.2.0(typescript@5.0.4)(vite@4.2.1)
+    version: 4.2.0(typescript@5.0.4)(vite@4.3.1)
   vitest:
     specifier: ^0.30.1
     version: 0.30.1
@@ -624,8 +624,8 @@ packages:
     resolution: {integrity: sha512-FdQ0qbYL7t+GP5eWdAPC+oeN2w3zqnujrdDLp/sj58UtMxFSHg21crprmbmiAJAWsL5EdB9aZzcisBGn382xHg==}
     dev: true
 
-  /@effect/io@0.22.4:
-    resolution: {integrity: sha512-WdZDvPaynYV/3QB7dm0Jnis3QIp1zrjaIGVEKpzGsradnxTFkdxqWBQvIADLQ5wBIZzYJ60aQmpuepnaAKDJAA==}
+  /@effect/io@0.25.1:
+    resolution: {integrity: sha512-Mc28J+SDh4tpYFE/gW5fSwJDPIWfFy4hlMmBOPq9mMH/RHixKivajNR3lp/3dDw99YzuahrDCIgtWNCy5SLuCQ==}
     dependencies:
       '@effect/data': 0.12.2
     dev: false
@@ -1640,6 +1640,7 @@ packages:
 
   /bindings@1.5.0:
     resolution: {integrity: sha512-p2q/t/mhvuOj/UeLlV6566GD/guowlr0hHxClI0W9m7MWYkL1F0hLo+0Aexs9HSPCtR1SXQ0TD3MMKrXZajbiQ==}
+    requiresBuild: true
     dependencies:
       file-uri-to-path: 1.0.0
     dev: true
@@ -3329,6 +3330,7 @@ packages:
 
   /file-uri-to-path@1.0.0:
     resolution: {integrity: sha512-0Zt+s3L7Vf1biwWZ29aARiVYLx7iMGnEUl9x33fbB/j3jR81u/O2LbqK+Bm1CDSNDKVtJ/YjwY7TUd5SkeLQLw==}
+    requiresBuild: true
     dev: true
     optional: true
 
@@ -6949,7 +6951,7 @@ packages:
       mlly: 1.2.0
       pathe: 1.1.0
       picocolors: 1.0.0
-      vite: 4.2.1(@types/node@18.15.11)
+      vite: 4.3.1(@types/node@18.15.11)
     transitivePeerDependencies:
       - '@types/node'
       - less
@@ -6960,7 +6962,7 @@ packages:
       - terser
     dev: true
 
-  /vite-tsconfig-paths@4.2.0(typescript@5.0.4)(vite@4.2.1):
+  /vite-tsconfig-paths@4.2.0(typescript@5.0.4)(vite@4.3.1):
     resolution: {integrity: sha512-jGpus0eUy5qbbMVGiTxCL1iB9ZGN6Bd37VGLJU39kTDD6ZfULTTb1bcc5IeTWqWJKiWV5YihCaibeASPiGi8kw==}
     peerDependencies:
       vite: '*'
@@ -6971,7 +6973,7 @@ packages:
       debug: 4.3.4
       globrex: 0.1.2
       tsconfck: 2.1.1(typescript@5.0.4)
-      vite: 4.2.1(@types/node@18.15.11)
+      vite: 4.3.1(@types/node@18.15.11)
     transitivePeerDependencies:
       - supports-color
       - typescript
@@ -7011,8 +7013,8 @@ packages:
       fsevents: 2.3.2
     dev: true
 
-  /vite@4.2.1(@types/node@18.15.11):
-    resolution: {integrity: sha512-7MKhqdy0ISo4wnvwtqZkjke6XN4taqQ2TBaTccLIpOKv7Vp2h4Y+NpmWCnGDeSvvn45KxvWgGyb0MkHvY1vgbg==}
+  /vite@4.3.1(@types/node@18.15.11):
+    resolution: {integrity: sha512-EPmfPLAI79Z/RofuMvkIS0Yr091T2ReUoXQqc5ppBX/sjFRhHKiPPF/R46cTdoci/XgeQpB23diiJxq5w30vdg==}
     engines: {node: ^14.18.0 || >=16.0.0}
     hasBin: true
     peerDependencies:
@@ -7039,7 +7041,6 @@ packages:
       '@types/node': 18.15.11
       esbuild: 0.17.17
       postcss: 8.4.22
-      resolve: 1.22.2
       rollup: 3.20.5
     optionalDependencies:
       fsevents: 2.3.2
@@ -7099,7 +7100,7 @@ packages:
       strip-literal: 1.0.1
       tinybench: 2.4.0
       tinypool: 0.4.0
-      vite: 4.2.1(@types/node@18.15.11)
+      vite: 4.3.1(@types/node@18.15.11)
       vite-node: 0.30.1(@types/node@18.15.11)
       why-is-node-running: 2.2.2
     transitivePeerDependencies:
