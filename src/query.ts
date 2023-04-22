@@ -70,7 +70,8 @@ export interface Driver<
   Query = Effect.Effect<ConnectionPool, DatabaseError, QueryResult>
 > {
   connect(connectionString: string): Effect.Effect<never, DatabaseError, C>;
-  disconnect(client: C): Effect.Effect<never, never, void>;
+  disconnect(client: C): Effect.Effect<never, DatabaseError, void>;
+
   runQuery(
     client: C,
     sql: string,
@@ -129,7 +130,7 @@ export function ConnectionPoolScopedService(
   const createConnectionPool = (connectionString: string) => {
     const get = Effect.acquireRelease(
       driver.connect(connectionString),
-      driver.disconnect
+      (client) => Effect.orDie(driver.disconnect(client))
     );
 
     return Pool.makeWithTTL(get, 1, 20, Duration.seconds(60));

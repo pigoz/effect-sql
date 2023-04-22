@@ -44,35 +44,30 @@ export function Driver<C extends Client<pg.Client>>(): Driver<C> {
     sql: string,
     parameters: readonly unknown[]
   ) =>
-    pipe(
-      Effect.async<never, DatabaseError, QueryResult>((resume) => {
-        client.native.query(
-          { text: sql, values: parameters?.slice(0) },
-          (error: pg.DatabaseError, result: pg.QueryResult) => {
-            if (error) {
-              resume(
-                Effect.fail(
-                  new DatabaseError({
-                    code: error.code,
-                    name: "QueryError",
-                    message: error.message,
-                  })
-                )
-              );
-            } else {
-              resume(Effect.succeed(QueryResultFromPg(result)));
-            }
+    Effect.async<never, DatabaseError, QueryResult>((resume) => {
+      client.native.query(
+        { text: sql, values: parameters?.slice(0) },
+        (error: pg.DatabaseError, result: pg.QueryResult) => {
+          if (error) {
+            resume(
+              Effect.fail(
+                new DatabaseError({
+                  code: error.code,
+                  name: "QueryError",
+                  message: error.message,
+                })
+              )
+            );
+          } else {
+            resume(Effect.succeed(QueryResultFromPg(result)));
           }
-        );
-      })
-    );
+        }
+      );
+    });
 
   const disconnect = (client: C) =>
-    pipe(
-      Effect.async<never, DatabaseError, void>((resume) =>
-        client.native.end((error) => resume(ErrorFromPg(error)))
-      ),
-      Effect.orDie
+    Effect.async<never, DatabaseError, void>((resume) =>
+      client.native.end((error) => resume(ErrorFromPg(error)))
     );
 
   return {
