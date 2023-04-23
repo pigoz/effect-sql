@@ -1,6 +1,6 @@
 {
   "name": "effect-sql",
-  "version": "0.0.28",
+  "version": "0.0.29",
   "description": "Use SQL Databases with Effect",
   "publishConfig": {
     "access": "public",

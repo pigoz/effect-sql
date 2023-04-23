@@ -1,5 +1,11 @@
 # effect-sql
 
+## 0.0.29
+
+### Patch Changes
+
+- [`b2e007a`](https://github.com/pigoz/effect-sql/commit/b2e007a9b4e3b70454378ad8f1be23c1b0f100cd) Thanks [@pigoz](https://github.com/pigoz)! - add transaction isolation level & internal refactor
+
 ## 0.0.28
 
 ### Patch Changes
