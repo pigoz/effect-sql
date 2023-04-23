@@ -9,7 +9,7 @@ import {
   Driver,
   QueryResult,
   runQuery,
-  makeClient,
+  ClientService,
   IsolationLevel,
 } from "effect-sql/query";
 
@@ -39,7 +39,7 @@ export function Driver<C extends Client<pg.Client>>(): Driver<C> {
           client.connect((error) => resume(ErrorFromPg(error)))
         )
       ),
-      Effect.map((native) => makeClient({ native, savepoint: 0 }) as C)
+      Effect.map((native) => ClientService({ native, savepoint: 0 }) as C)
     );
 
   const runQueryImpl = (

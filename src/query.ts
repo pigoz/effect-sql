@@ -54,7 +54,7 @@ export const ConnectionScope = TaggedScope.Tag<ConnectionScope>(
   Symbol.for("pigoz/effect-sql/ConnectionScope")
 );
 
-export const makeClient = Data.tagged<Client>("Client");
+export const ClientService = Data.tagged<Client>("Client");
 
 export interface ConnectionPool extends Data.Case {
   _tag: "ConnectionPool";
@@ -66,7 +66,7 @@ export const ConnectionPool = Context.Tag<ConnectionPool>(
   Symbol.for("pigoz/effect-sql/ConnectionPool")
 );
 
-const makeConnectionPool = Data.tagged<ConnectionPool>("ConnectionPool");
+const ConnectionPoolService = Data.tagged<ConnectionPool>("ConnectionPool");
 
 // Driver
 export interface IsolationLevel extends Data.Case {
@@ -160,7 +160,7 @@ export function ConnectionPoolScopedService(
   return pipe(
     getConnectionString,
     Effect.flatMap(createConnectionPool),
-    Effect.map((pool) => makeConnectionPool({ pool, driver }))
+    Effect.map((pool) => ConnectionPoolService({ pool, driver }))
   );
 }
 
@@ -280,7 +280,7 @@ export function transaction<R, E1, A>(self: Effect.Effect<R, E1, A>) {
   const commit = matchSavepoint((driver) => driver.commit);
 
   const bumpSavepoint = (c: Client) =>
-    makeClient({ ...c, savepoint: c.savepoint + 1 });
+    ClientService({ ...c, savepoint: c.savepoint + 1 });
 
   const acquire = pipe(
     connect(bumpSavepoint),
