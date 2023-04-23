@@ -34,7 +34,7 @@ export const pgtransaction = (() => {
   ) => {
     return it(
       name,
-      () => runTestPromise(transaction(Effect.suspend(self), { test: true })),
+      () => runTestPromise(transaction(Effect.suspend(self))),
       timeout
     );
   };
@@ -46,7 +46,7 @@ export const pgtransaction = (() => {
     ) => {
       return it.skip(
         name,
-        () => runTestPromise(transaction(Effect.suspend(self), { test: true })),
+        () => runTestPromise(transaction(Effect.suspend(self))),
         timeout
       );
     },
@@ -57,7 +57,7 @@ export const pgtransaction = (() => {
     ) => {
       return it.only(
         name,
-        () => runTestPromise(transaction(Effect.suspend(self), { test: true })),
+        () => runTestPromise(transaction(Effect.suspend(self))),
         timeout
       );
     },
@@ -68,7 +68,7 @@ export const pgtransaction = (() => {
     ) => {
       return it.fails(
         name,
-        () => runTestPromise(transaction(Effect.suspend(self), { test: true })),
+        () => runTestPromise(transaction(Effect.suspend(self))),
         timeout
       );
     },

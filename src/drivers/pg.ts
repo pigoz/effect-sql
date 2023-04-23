@@ -91,3 +91,9 @@ export function Driver<C extends Client<pg.Client>>(): Driver<C> {
     },
   };
 }
+
+export function SandboxedDriver<C extends Client<pg.Client>>(): Driver<C> {
+  const driver = Driver<C>();
+  driver.commit.transaction = driver.rollback.transaction;
+  return driver;
+}

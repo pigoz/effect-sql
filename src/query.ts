@@ -253,10 +253,7 @@ const matchSavepoint = (
     }
   );
 
-export function transaction<R, E1, A>(
-  self: Effect.Effect<R, E1, A>,
-  options?: { test?: boolean }
-) {
+export function transaction<R, E1, A>(self: Effect.Effect<R, E1, A>) {
   const start = matchSavepoint((driver) => driver.start);
   const rollback = matchSavepoint((driver) => driver.rollback);
   const commit = matchSavepoint((driver) => driver.commit);
@@ -281,7 +278,7 @@ export function transaction<R, E1, A>(
       exit,
       Exit.match(
         () => rollback,
-        () => (options?.test ? rollback : commit)
+        () => commit
       ),
       Effect.orDie, // XXX handle error when rolling back?
       Effect.provideService(Client, client)
