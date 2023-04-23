@@ -1,4 +1,3 @@
-// Kysely
 import * as schema from "./pg.schema";
 
 import { queryBuilderDsl } from "effect-sql/builders/kysely/pg";

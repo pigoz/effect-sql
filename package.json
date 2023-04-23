@@ -17,7 +17,7 @@
   ],
   "scripts": {
     "test": "vitest",
-    "migrate:pg": "drizzle-kit generate:pg --out test/migrations/pg --schema test/pg.schema.ts",
+    "migrate:pg": "drizzle-kit generate:pg --out test/migrations/pg --schema test/helpers/pg.schema.ts",
     "version": "changeset version && pnpm install --no-frozen-lockfile",
     "release": "pnpm run build && changeset publish",
     "circular": "skott --fileExtensions=.ts,.tsx --tsconfig=tsconfig.base.json --displayMode=raw --showCircularDependencies",

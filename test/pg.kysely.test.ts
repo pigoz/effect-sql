@@ -20,7 +20,7 @@ import {
   runQueryOne,
 } from "effect-sql/builders/kysely";
 import { DatabaseError, NotFound, TooMany } from "effect-sql/errors";
-import { City, User, db } from "./pg.kysely.dsl";
+import { City, User, db } from "./helpers/pg.kysely.dsl";
 import { jsonAgg } from "./helpers/json";
 import { usingLayer, testLayer } from "./helpers/layer";
 import { Driver } from "effect-sql/drivers/pg";

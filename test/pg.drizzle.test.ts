@@ -5,6 +5,10 @@ import * as Layer from "@effect/io/Layer";
 import * as Config from "@effect/io/Config";
 import * as ConfigSecret from "@effect/io/Config/Secret";
 import { it, describe, expect } from "./helpers";
+import { db } from "./helpers/pg.drizzle.dsl";
+import { cities } from "./helpers/pg.schema";
+import { usingLayer, testLayer } from "./helpers/layer";
+
 import {
   ConnectionPool,
   ConnectionPoolScopedService,
@@ -18,9 +22,6 @@ import {
   runQueryExactlyOne,
 } from "effect-sql/builders/drizzle";
 import { DatabaseError, NotFound, TooMany } from "effect-sql/errors";
-import { db } from "./pg.drizzle.dsl";
-import { cities } from "./pg.schema";
-import { usingLayer, testLayer } from "./helpers/layer";
 import { Driver } from "effect-sql/drivers/pg";
 
 usingLayer(testLayer);
