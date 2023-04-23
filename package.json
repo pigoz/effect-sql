@@ -55,7 +55,8 @@
   "optionalDependencies": {
     "drizzle-orm": "^0.24.4",
     "kysely": "^0.24.2",
-    "pg": "^8.10.0"
+    "pg": "^8.10.0",
+    "mysql2": "3.2.3"
   },
   "devDependencies": {
     "@babel/cli": "^7.21.0",
