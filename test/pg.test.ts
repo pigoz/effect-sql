@@ -15,6 +15,7 @@ import {
   connected,
   IsolationLevel,
   ReadCommitted,
+  Serializable,
 } from "effect-sql/query";
 import { DatabaseError, NotFound, TooMany } from "effect-sql/errors";
 import { usingLayer, testLayer } from "./helpers/layer";
@@ -206,18 +207,17 @@ describe("pg", () => {
     })
   );
 
-  it.effect("isolation level", () =>
+  it.effect("isolation level service", () =>
     Effect.gen(function* ($) {
       const res = yield* $(
-        select,
-        runQuery,
+        `show transaction isolation level`,
+        runQueryExactlyOne,
         transaction,
-        Effect.provideService(IsolationLevel, ReadCommitted),
-        Effect.zipRight(Effect.succeed("ok")),
+        Effect.provideService(IsolationLevel, Serializable),
         Effect.either
       );
 
-      expect(res).toEqual(E.right("ok"));
+      expect(res).toEqual(E.right({ transaction_isolation: "serializable" }));
     })
   );
 });
