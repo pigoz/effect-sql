@@ -192,12 +192,10 @@ describe("pg", () => {
   it.effect("create database", () =>
     Effect.gen(function* ($) {
       const res = yield* $(
-        connected(
-          Effect.all(
-            runQuery(`drop database if exists "foo"`),
-            runQuery(`create database "foo";`),
-            runQuery(`drop database "foo"`)
-          )
+        Effect.all(
+          runQuery(`drop database if exists "foo"`),
+          runQuery(`create database "foo"`),
+          runQuery(`drop database "foo"`)
         ),
         Effect.zipRight(Effect.succeed("ok")),
         Effect.either
