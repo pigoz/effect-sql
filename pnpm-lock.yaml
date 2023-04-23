@@ -11,7 +11,7 @@ dependencies:
 optionalDependencies:
   drizzle-orm:
     specifier: ^0.24.4
-    version: 0.24.4(@types/pg@8.6.6)(kysely@0.24.2)(pg@8.10.0)
+    version: 0.24.5(@types/pg@8.6.6)(kysely@0.24.2)(pg@8.10.0)
   kysely:
     specifier: ^0.24.2
     version: 0.24.2
@@ -84,8 +84,8 @@ devDependencies:
     specifier: ^5.0.0
     version: 5.0.0
   skott:
-    specifier: ^0.20.1
-    version: 0.20.1(@types/node@18.15.13)
+    specifier: ^0.20.2
+    version: 0.20.2(@types/node@18.15.13)
   testcontainers:
     specifier: ^9.5.0
     version: 9.5.0
@@ -1104,6 +1104,11 @@ packages:
   /@types/node@18.15.13:
     resolution: {integrity: sha512-N+0kuo9KgrUQ1Sn/ifDXsvg0TTleP7rIy4zOBGECxAljqvqfqpTfzx0Q1NUedOixRMBfe2Whhb056a42cWs26Q==}
 
+  /@types/node@18.16.0:
+    resolution: {integrity: sha512-BsAaKhB+7X+H4GnSjGhJG9Qi8Tw+inU9nJDwmD5CgOmBLEI6ArdhikpLX7DjbjDRDTbqZzU2LSQNZg8WGPiSZQ==}
+    dev: true
+    optional: true
+
   /@types/normalize-package-data@2.4.1:
     resolution: {integrity: sha512-Gj7cI7z+98M282Tqmp2K5EIsoouUEzbBJhQQzDE3jSIRk6r9gsz0oUokqIUR4u1R3dMHo0pDHM7sNOHyhulypw==}
     dev: true
@@ -1156,7 +1161,7 @@ packages:
     resolution: {integrity: sha512-Cn6WYCm0tXv8p6k+A8PvbDG763EDpBoTzHdA+Q/MF6H3sapGjCm9NzoaJncJS9tUKSuCoDs9XHxYYsQDgxR6kw==}
     requiresBuild: true
     dependencies:
-      '@types/node': 18.15.13
+      '@types/node': 18.16.0
     dev: true
     optional: true
 
@@ -2679,8 +2684,8 @@ packages:
       - supports-color
     dev: true
 
-  /drizzle-orm@0.24.4(@types/pg@8.6.6)(kysely@0.24.2)(pg@8.10.0):
-    resolution: {integrity: sha512-mQzuqEHqc2NGN20ACc0NAaFaHlQlTZquoK42xJ8TRSntzAVz4iSDksozVJKBXig+qKgZA9C7KpWCDRo9+NMgng==}
+  /drizzle-orm@0.24.5(@types/pg@8.6.6)(kysely@0.24.2)(pg@8.10.0):
+    resolution: {integrity: sha512-TK9EBw7NMZt1NbH3MvZkRKDbkyxZw/epBeCmcaFb3mhm9DeCTX6B0eDYGDWSEhjvwgtdhHEhM8/KXmODTjPfAw==}
     requiresBuild: true
     peerDependencies:
       '@aws-sdk/client-rds-data': '>=3'
@@ -6115,8 +6120,8 @@ packages:
       - terser
     dev: true
 
-  /skott@0.20.1(@types/node@18.15.13):
-    resolution: {integrity: sha512-yDO/A460ECvxRkZurSTefSfRIVFGym6ErEJBNmgKPWJDod/68n/cuJFGUnFZvn2sDPQndp7iAywkJoe10fRCpg==}
+  /skott@0.20.2(@types/node@18.15.13):
+    resolution: {integrity: sha512-8fW2xGug67hXGh7AiUm7/uS2fEhGqblkUFgdHkqHob2PwQ36N50cILIy5NZe01dvhTwEkPx2MzAIx4Yml9yj6Q==}
     hasBin: true
     dependencies:
       '@effect/data': 0.4.1
