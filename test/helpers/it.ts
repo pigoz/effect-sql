@@ -26,7 +26,7 @@ export const effect = (() => {
   });
 })();
 
-export const pgtransaction = (() => {
+export const sandbox = (() => {
   const f = <E, A>(
     name: string,
     self: () => Effect.Effect<TestLayer, E, A>,

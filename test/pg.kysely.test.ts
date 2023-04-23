@@ -29,13 +29,13 @@ usingLayer(
 );
 
 describe("pg – kysely", () => {
-  it.pgtransaction("runQuery ==0", () =>
+  it.sandbox("runQuery ==0", () =>
     Effect.gen(function* ($) {
       expect((yield* $(select, runQueryRows)).length).toEqual(0);
     })
   );
 
-  it.pgtransaction("runQuery ==2", () =>
+  it.sandbox("runQuery ==2", () =>
     Effect.gen(function* ($) {
       yield* $(insert("foo"), runQueryRows);
       yield* $(insert("bar"), runQueryRows);
@@ -44,7 +44,7 @@ describe("pg – kysely", () => {
     })
   );
 
-  it.pgtransaction("runQueryOne ==0: NotFound", () =>
+  it.sandbox("runQueryOne ==0: NotFound", () =>
     Effect.gen(function* ($) {
       const res1 = yield* $(select, runQueryOne, Effect.either);
 
@@ -59,7 +59,7 @@ describe("pg – kysely", () => {
     })
   );
 
-  it.pgtransaction("runQueryOne ==1: finds record", () =>
+  it.sandbox("runQueryOne ==1: finds record", () =>
     Effect.gen(function* ($) {
       yield* $(insert("foo"), runQueryRows);
 
@@ -68,7 +68,7 @@ describe("pg – kysely", () => {
     })
   );
 
-  it.pgtransaction("runQueryOne ==2: finds record", () =>
+  it.sandbox("runQueryOne ==2: finds record", () =>
     Effect.gen(function* ($) {
       yield* $(insert("foo"), runQueryRows);
       yield* $(insert("bar"), runQueryRows);
@@ -79,7 +79,7 @@ describe("pg – kysely", () => {
     })
   );
 
-  it.pgtransaction("runQueryExactlyOne ==0: NotFound", () =>
+  it.sandbox("runQueryExactlyOne ==0: NotFound", () =>
     Effect.gen(function* ($) {
       const res1 = yield* $(select, runQueryExactlyOne, Effect.either);
 
@@ -94,7 +94,7 @@ describe("pg – kysely", () => {
     })
   );
 
-  it.pgtransaction("runQueryExactlyOne ==1: finds record", () =>
+  it.sandbox("runQueryExactlyOne ==1: finds record", () =>
     Effect.gen(function* ($) {
       yield* $(insert("foo"), runQueryRows);
 
@@ -103,7 +103,7 @@ describe("pg – kysely", () => {
     })
   );
 
-  it.pgtransaction("runQueryExactlyOne ==2: finds record", () =>
+  it.sandbox("runQueryExactlyOne ==2: finds record", () =>
     Effect.gen(function* ($) {
       yield* $(insert("foo"), runQueryRows);
       yield* $(insert("bar"), runQueryRows);
@@ -121,7 +121,7 @@ describe("pg – kysely", () => {
     })
   );
 
-  it.pgtransaction("respects case", () =>
+  it.sandbox("respects case", () =>
     Effect.gen(function* ($) {
       yield* $(insert("Foo"), runQueryRows);
 
@@ -135,7 +135,7 @@ describe("pg – kysely", () => {
     })
   );
 
-  it.pgtransaction("json_agg", () =>
+  it.sandbox("json_agg", () =>
     Effect.gen(function* ($) {
       const insertCity = (name: string) =>
         pipe(
