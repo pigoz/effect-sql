@@ -10,7 +10,7 @@ It's composed of several decoupled pieces, from which you should be able to pick
     - Layer to manage the ConnectionPool using Effect's Pool
     - Query operators with tagged errors in the failure channel
     - DSL for nested transactions (using savepoints!)
-    - (*Doing*): Driver based abstraction to support multiple database engines (⚠️focusing on getting PostgreSQL right initially)
+    - (*Doing*): Driver based abstraction to support multiple database engines (focusing on getting PostgreSQL🐘 right initially)
     - (*Planned*): Non pooled connections (i.e. PlanetScale)
 
   - (*Optional*) `effect-sql/schema`: TypeScript-first schema declaration based on [Drizzle](https://github.com/drizzle-team/drizzle-orm). Features:
@@ -21,6 +21,8 @@ It's composed of several decoupled pieces, from which you should be able to pick
   - (*Optional*) `effect-sql/builders/*`: Query builders to create typesafe queries and to execute them. They are built on top of `effect-sql/query`
     - [Kysely](https://github.com/kysely-org/kysely): "blessed" solution
     - [Drizzle](https://github.com/drizzle-team/drizzle-orm): "toy" solution, see [Drizzle as a Query Builder](#drizzle-as-a-query-builder) in this README.
+
+  - (*Planned*) `effect-sql/sql`: tagged template literal to build safer queries
 
 ### Raw SQL Example (minimal!)
 ```typescript
