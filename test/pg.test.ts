@@ -13,6 +13,8 @@ import {
   runQueryExactlyOne,
   transaction,
   connected,
+  IsolationLevel,
+  ReadCommitted,
 } from "effect-sql/query";
 import { DatabaseError, NotFound, TooMany } from "effect-sql/errors";
 import { usingLayer, testLayer } from "./helpers/layer";
@@ -196,6 +198,21 @@ describe("pg", () => {
             runQuery(`drop database "foo"`)
           )
         ),
+        Effect.zipRight(Effect.succeed("ok")),
+        Effect.either
+      );
+
+      expect(res).toEqual(E.right("ok"));
+    })
+  );
+
+  it.effect("isolation level", () =>
+    Effect.gen(function* ($) {
+      const res = yield* $(
+        select,
+        runQuery,
+        transaction,
+        Effect.provideService(IsolationLevel, ReadCommitted),
         Effect.zipRight(Effect.succeed("ok")),
         Effect.either
       );

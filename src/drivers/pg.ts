@@ -1,4 +1,6 @@
 import * as Effect from "@effect/io/Effect";
+import * as Context from "@effect/data/Context";
+import * as Option from "@effect/data/Option";
 import { DatabaseError } from "effect-sql/errors";
 import pg from "pg";
 import { pipe } from "@effect/data/Function";
@@ -8,6 +10,7 @@ import {
   QueryResult,
   runQuery,
   makeClient,
+  IsolationLevel,
 } from "effect-sql/query";
 
 const ErrorFromPg = (error?: Error) =>
@@ -76,18 +79,26 @@ export function Driver<C extends Client<pg.Client>>(): Driver<C> {
     disconnect,
 
     start: {
-      transaction: () => runQuery(`START TRANSACTION`),
-      savepoint: (name: string) => runQuery(`SAVEPOINT ${name}`),
+      transaction: () =>
+        Effect.contextWithEffect((r: Context.Context<never>) =>
+          Option.match(
+            Context.getOption(r, IsolationLevel),
+            () => runQuery(`start transaction`),
+            (isolation) =>
+              runQuery(`start transaction isolation level ${isolation.sql}`)
+          )
+        ),
+      savepoint: (name: string) => runQuery(`savepoint ${name}`),
     },
 
     rollback: {
-      transaction: () => runQuery(`ROLLBACK`),
-      savepoint: (name: string) => runQuery(`ROLLBACK TO ${name}`),
+      transaction: () => runQuery(`rollback`),
+      savepoint: (name: string) => runQuery(`rollback to ${name}`),
     },
 
     commit: {
-      transaction: () => runQuery(`COMMIT`),
-      savepoint: (name: string) => runQuery(`RELEASE SAVEPOINT ${name}`),
+      transaction: () => runQuery(`commit`),
+      savepoint: (name: string) => runQuery(`release savepoint ${name}`),
     },
   };
 }

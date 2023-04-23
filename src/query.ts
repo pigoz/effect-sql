@@ -15,6 +15,7 @@ import { ConfigError } from "@effect/io/Config/Error";
 import * as TaggedScope from "effect-sql/TaggedScope";
 import { DatabaseError, NotFound, TooMany } from "effect-sql/errors";
 
+// General types
 export type UnknownRow = {
   [x: string]: unknown;
 };
@@ -24,6 +25,7 @@ export interface QueryResult<T = UnknownRow> {
   rows: T[];
 }
 
+// Hooks
 export interface AfterQueryHook extends Data.Case {
   _tag: "AfterQueryHook";
   hook: (res: QueryResult) => QueryResult;
@@ -35,6 +37,7 @@ export const AfterQueryHook = Context.Tag<AfterQueryHook>(
 
 export const afterQueryHook = Data.tagged<AfterQueryHook>("AfterQueryHook");
 
+// Connection Pool Types
 export interface Client<A = unknown> extends Data.Case {
   _tag: "Client";
   native: A;
@@ -64,6 +67,24 @@ export const ConnectionPool = Context.Tag<ConnectionPool>(
 );
 
 const makeConnectionPool = Data.tagged<ConnectionPool>("ConnectionPool");
+
+// Driver
+export interface IsolationLevel extends Data.Case {
+  _tag: "IsolationLevel";
+  sql: string;
+}
+
+export const IsolationLevel = Context.Tag<IsolationLevel>(
+  Symbol.for("pigoz/effect-sql/IsolationLevel")
+);
+
+export const IsolationLevelService = (sql: string) =>
+  Data.tagged<IsolationLevel>("IsolationLevel")({ sql });
+
+export const ReadUncommitted = IsolationLevelService("read uncommitted");
+export const ReadCommitted = IsolationLevelService("read committed");
+export const RepeatableRead = IsolationLevelService("repeatable read");
+export const Serializable = IsolationLevelService("serializable");
 
 export interface Driver<
   C extends Client = Client,
