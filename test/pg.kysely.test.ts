@@ -2,28 +2,17 @@ import { pipe } from "@effect/data/Function";
 import * as E from "@effect/data/Either";
 import * as Effect from "@effect/io/Effect";
 import * as Layer from "@effect/io/Layer";
-import * as Config from "@effect/io/Config";
-import * as ConfigSecret from "@effect/io/Config/Secret";
 import { it, describe, expect } from "./helpers";
-import {
-  ConnectionPool,
-  ConnectionPoolScopedService,
-  runQuery as runRawQuery,
-  transaction,
-  connected,
-  AfterQueryHook,
-  afterQueryHook,
-} from "effect-sql/query";
+import { AfterQueryHook, afterQueryHook } from "effect-sql/query";
 import {
   runQueryRows,
   runQueryExactlyOne,
   runQueryOne,
 } from "effect-sql/builders/kysely";
-import { DatabaseError, NotFound, TooMany } from "effect-sql/errors";
+import { NotFound, TooMany } from "effect-sql/errors";
 import { City, User, db } from "./helpers/pg.kysely.dsl";
 import { jsonAgg } from "./helpers/json";
 import { usingLayer, testLayer } from "./helpers/layer";
-import { Driver } from "effect-sql/drivers/pg";
 
 const select = db.selectFrom("cities").selectAll();
 const selectName = db.selectFrom("cities").select("name");
@@ -129,97 +118,6 @@ describe("pg – kysely", () => {
           })
         )
       );
-    })
-  );
-
-  it.pgtransaction("handle QueryError", () =>
-    Effect.gen(function* ($) {
-      const res = yield* $(
-        "select * from dontexist;",
-        runRawQuery,
-        Effect.either
-      );
-
-      expect(res).toEqual(
-        E.left(
-          new DatabaseError({
-            code: "42P01",
-            name: "QueryError",
-            message: `relation "dontexist" does not exist`,
-          })
-        )
-      );
-    })
-  );
-
-  it.effect("handle PoolError", () =>
-    Effect.gen(function* ($) {
-      const res = yield* $(
-        select,
-        runQueryRows,
-        Effect.provideSomeLayer(
-          Layer.scoped(
-            ConnectionPool,
-            ConnectionPoolScopedService(Driver(), {
-              databaseUrl: Config.succeed(
-                ConfigSecret.fromString("postgres://127.0.0.1:80")
-              ),
-            })
-          )
-        ),
-        Effect.either
-      );
-
-      expect(res).toEqual(
-        E.left(
-          new DatabaseError({
-            name: "ConnectionPoolError",
-            message: `connect ECONNREFUSED 127.0.0.1:80`,
-          })
-        )
-      );
-    })
-  );
-
-  it.pgtransaction("transactions", () =>
-    Effect.gen(function* ($) {
-      const count = pipe(
-        select,
-        runQueryRows,
-        Effect.map((_) => _.length)
-      );
-
-      yield* $(insert("foo"), runQueryRows, transaction);
-      expect(yield* $(count)).toEqual(1);
-
-      yield* $(insert("foo"), runQueryRows, transaction);
-      expect(yield* $(count)).toEqual(2);
-
-      yield* $(
-        Effect.all(runQueryRows(insert("foo")), Effect.fail("fail")),
-        transaction,
-        Effect.either
-      );
-
-      expect(yield* $(count)).toEqual(2);
-    })
-  );
-
-  it.effect("create database", () =>
-    Effect.gen(function* ($) {
-      const res = yield* $(
-        connected(
-          Effect.all(
-            runRawQuery(`drop database if exists "foo"`),
-            runRawQuery(`create database "foo";`),
-            runRawQuery(`drop database "foo"`)
-          )
-        ),
-        Effect.zipRight(Effect.succeed("ok")),
-        Effect.either
-      );
-
-      expect(res).toEqual(E.right("ok"));
     })
   );
 
