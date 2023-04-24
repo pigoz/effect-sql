@@ -86,10 +86,9 @@ export const ReadCommitted = IsolationLevelService("read committed");
 export const RepeatableRead = IsolationLevelService("repeatable read");
 export const Serializable = IsolationLevelService("serializable");
 
-export interface Driver<
-  C extends Client = Client,
-  Query = Effect.Effect<ConnectionPool, DatabaseError, QueryResult>
-> {
+type DriverQuery = Effect.Effect<ConnectionPool, DatabaseError, QueryResult>;
+
+export interface Driver<C extends Client = Client> {
   connect(connectionString: string): Effect.Effect<never, DatabaseError, C>;
   disconnect(client: C): Effect.Effect<never, DatabaseError, void>;
 
@@ -100,19 +99,26 @@ export interface Driver<
   ): Effect.Effect<never, DatabaseError, QueryResult>;
 
   start: {
-    savepoint(name: string): Query;
-    transaction(): Query;
+    savepoint(name: string): DriverQuery;
+    transaction(): DriverQuery;
   };
 
   rollback: {
-    savepoint(name: string): Query;
-    transaction(): Query;
+    savepoint(name: string): DriverQuery;
+    transaction(): DriverQuery;
   };
 
   commit: {
-    savepoint(name: string): Query;
-    transaction(): Query;
+    savepoint(name: string): DriverQuery;
+    transaction(): DriverQuery;
   };
+
+  sandbox(driver: Driver<C>): Effect.Effect<never, never, SandboxedDriver<C>>;
+}
+
+export interface SandboxedDriver<C extends Client = Client> extends Driver<C> {
+  client: C;
+  unsandbox(): Effect.Effect<never, never, void>;
 }
 
 const defaultConfig = {
@@ -256,8 +262,6 @@ export function runQueryExactlyOne<A>(
   );
 }
 
-type DriverQuery = Effect.Effect<ConnectionPool, DatabaseError, QueryResult>;
-
 const matchSavepoint = (
   fn: (driver: Driver) => {
     savepoint: (name: string) => DriverQuery;
@@ -308,5 +312,18 @@ export function transaction<R, E1, A>(self: Effect.Effect<R, E1, A>) {
   return TaggedScope.scoped(
     Effect.acquireUseRelease(acquire, use, release),
     ConnectionScope
+  );
+}
+
+export function sandbox<R, E, A>(
+  self: Effect.Effect<R, E, A>
+): Effect.Effect<ConnectionPool | R, E, A> {
+  return Effect.flatMap(ConnectionPool, (pool) =>
+    Effect.acquireUseRelease(
+      pool.driver.sandbox(pool.driver),
+      (driver) =>
+        Effect.provideService(self, ConnectionPool, { ...pool, driver }),
+      (driver) => driver.unsandbox()
+    )
   );
 }
