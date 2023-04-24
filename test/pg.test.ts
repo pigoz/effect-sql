@@ -12,9 +12,7 @@ import {
   runQueryOne,
   runQueryExactlyOne,
   transaction,
-  connected,
   IsolationLevel,
-  ReadCommitted,
   Serializable,
 } from "effect-sql/query";
 import { DatabaseError, NotFound, TooMany } from "effect-sql/errors";
