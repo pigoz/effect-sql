@@ -12,9 +12,7 @@ import {
   runQueryOne,
   runQueryExactlyOne,
   transaction,
-  connected,
   IsolationLevel,
-  ReadCommitted,
   Serializable,
 } from "effect-sql/query";
 import { DatabaseError, NotFound, TooMany } from "effect-sql/errors";
@@ -28,13 +26,13 @@ const selectName = `select "name" from "cities"`;
 const insert = (name: string) => `insert into cities(name) values('${name}')`;
 
 describe("pg", () => {
-  it.sandbox("runQuery ==0", () =>
+  it.effect("runQuery ==0", () =>
     Effect.gen(function* ($) {
       expect((yield* $(select, runQuery)).rows.length).toEqual(0);
     })
   );
 
-  it.sandbox("runQuery ==2", () =>
+  it.effect("runQuery ==2", () =>
     Effect.gen(function* ($) {
       yield* $(insert("foo"), runQuery);
       yield* $(insert("bar"), runQuery);
@@ -43,7 +41,7 @@ describe("pg", () => {
     })
   );
 
-  it.sandbox("runQueryOne ==0: NotFound", () =>
+  it.effect("runQueryOne ==0: NotFound", () =>
     Effect.gen(function* ($) {
       const res1 = yield* $(select, runQueryOne, Effect.either);
 
@@ -58,7 +56,7 @@ describe("pg", () => {
     })
   );
 
-  it.sandbox("runQueryOne ==1: finds record", () =>
+  it.effect("runQueryOne ==1: finds record", () =>
     Effect.gen(function* ($) {
       yield* $(insert("foo"), runQuery);
 
@@ -67,7 +65,7 @@ describe("pg", () => {
     })
   );
 
-  it.sandbox("runQueryOne ==2: finds record", () =>
+  it.effect("runQueryOne ==2: finds record", () =>
     Effect.gen(function* ($) {
       yield* $(insert("foo"), runQuery);
       yield* $(insert("bar"), runQuery);
@@ -78,7 +76,7 @@ describe("pg", () => {
     })
   );
 
-  it.sandbox("runQueryExactlyOne ==0: NotFound", () =>
+  it.effect("runQueryExactlyOne ==0: NotFound", () =>
     Effect.gen(function* ($) {
       const res1 = yield* $(select, runQueryExactlyOne, Effect.either);
 
@@ -93,7 +91,7 @@ describe("pg", () => {
     })
   );
 
-  it.sandbox("runQueryExactlyOne ==1: finds record", () =>
+  it.effect("runQueryExactlyOne ==1: finds record", () =>
     Effect.gen(function* ($) {
       yield* $(insert("foo"), runQuery);
 
@@ -102,7 +100,7 @@ describe("pg", () => {
     })
   );
 
-  it.sandbox("runQueryExactlyOne ==2: finds record", () =>
+  it.effect("runQueryExactlyOne ==2: finds record", () =>
     Effect.gen(function* ($) {
       yield* $(insert("foo"), runQuery);
       yield* $(insert("bar"), runQuery);
@@ -120,7 +118,7 @@ describe("pg", () => {
     })
   );
 
-  it.sandbox("handle QueryError", () =>
+  it.effect("handle QueryError", () =>
     Effect.gen(function* ($) {
       const res = yield* $("select * from dontexist;", runQuery, Effect.either);
 
@@ -165,7 +163,7 @@ describe("pg", () => {
     })
   );
 
-  it.sandbox("transactions", () =>
+  it.effect("transactions", () =>
     Effect.gen(function* ($) {
       const count = pipe(
         select,

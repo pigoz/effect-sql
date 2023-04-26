@@ -8,7 +8,11 @@ import * as Context from "@effect/data/Context";
 
 import { PostgreSqlContainer } from "testcontainers";
 import * as path from "path";
-import { ConnectionPool, ConnectionPoolScopedService } from "effect-sql/query";
+import {
+  ConnectionPool,
+  ConnectionPoolScopedService,
+  sandbox,
+} from "effect-sql/query";
 import * as Config from "@effect/io/Config";
 import * as ConfigSecret from "@effect/io/Config/Secret";
 import { MigrationLayer } from "effect-sql/schema/pg";
@@ -24,7 +28,7 @@ export const testContainer = pipe(
       .withUsername("postgres")
       .withPassword("postgres")
       .withDatabase("effect_drizzle_test")
-      .withReuse()
+      // .withReuse()
       .start();
 
     return container.getConnectionUri() + "?sslmode=disable";
@@ -66,7 +70,7 @@ export function runTestPromise<R extends TestLayer, E, A>(
   self: Effect.Effect<R, E, A>
 ) {
   const r = (globalThis as any).runtime as Runtime.Runtime<TestLayer>;
-  return Runtime.runPromise(r)(self);
+  return Runtime.runPromise(r)(sandbox(self));
 }
 
 const TIMEOUT = 30000;

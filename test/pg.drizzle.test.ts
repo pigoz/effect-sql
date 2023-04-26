@@ -19,13 +19,13 @@ const selectNameFromCities = db.select({ name: cities.name }).from(cities);
 const insertCity = (name: string) => db.insert(cities).values({ name });
 
 describe("pg – drizzle", () => {
-  it.sandbox("runQuery ==0", () =>
+  it.effect("runQuery ==0", () =>
     Effect.gen(function* ($) {
       expect((yield* $(selectFromCities, runQueryRows)).length).toEqual(0);
     })
   );
 
-  it.sandbox("runQuery ==2", () =>
+  it.effect("runQuery ==2", () =>
     Effect.gen(function* ($) {
       yield* $(insertCity("Foo"), runQueryRows);
       yield* $(insertCity("Bar"), runQueryRows);
@@ -33,7 +33,7 @@ describe("pg – drizzle", () => {
     })
   );
 
-  it.sandbox("runQueryOne ==0: NotFound", () =>
+  it.effect("runQueryOne ==0: NotFound", () =>
     Effect.gen(function* ($) {
       const res1 = yield* $(selectFromCities, runQueryOne, Effect.either);
 
@@ -48,7 +48,7 @@ describe("pg – drizzle", () => {
     })
   );
 
-  it.sandbox("runQueryOne ==1: finds record", () =>
+  it.effect("runQueryOne ==1: finds record", () =>
     Effect.gen(function* ($) {
       yield* $(insertCity("Foo"), runQueryRows);
 
@@ -58,7 +58,7 @@ describe("pg – drizzle", () => {
     })
   );
 
-  it.sandbox("runQueryOne ==2: finds record", () =>
+  it.effect("runQueryOne ==2: finds record", () =>
     Effect.gen(function* ($) {
       yield* $(insertCity("Foo"), runQueryRows);
       yield* $(insertCity("Bar"), runQueryRows);
@@ -69,7 +69,7 @@ describe("pg – drizzle", () => {
     })
   );
 
-  it.sandbox("runQueryExactlyOne ==0: NotFound", () =>
+  it.effect("runQueryExactlyOne ==0: NotFound", () =>
     Effect.gen(function* ($) {
       const res1 = yield* $(
         selectFromCities,
@@ -88,7 +88,7 @@ describe("pg – drizzle", () => {
     })
   );
 
-  it.sandbox("runQueryExactlyOne ==1: finds record", () =>
+  it.effect("runQueryExactlyOne ==1: finds record", () =>
     Effect.gen(function* ($) {
       yield* $(insertCity("Foo"), runQueryRows);
 
@@ -102,7 +102,7 @@ describe("pg – drizzle", () => {
     })
   );
 
-  it.sandbox("runQueryExactlyOne ==2: finds record", () =>
+  it.effect("runQueryExactlyOne ==2: finds record", () =>
     Effect.gen(function* ($) {
       yield* $(insertCity("Foo"), runQueryRows);
       yield* $(insertCity("Bar"), runQueryRows);
@@ -124,7 +124,7 @@ describe("pg – drizzle", () => {
     })
   );
 
-  it.sandbox.fails("respects case", () =>
+  it.effect.fails("respects case", () =>
     Effect.gen(function* ($) {
       yield* $(insertCity("Foo"), runQueryRows);
 

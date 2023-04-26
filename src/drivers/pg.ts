@@ -5,7 +5,7 @@ import * as Context from "@effect/data/Context";
 import * as Option from "@effect/data/Option";
 import { DatabaseError } from "effect-sql/errors";
 import pg from "pg";
-import { pipe } from "@effect/data/Function";
+import { identity, pipe } from "@effect/data/Function";
 import {
   Client,
   Driver,
@@ -14,6 +14,7 @@ import {
   runQuery,
   ClientService,
   IsolationLevel,
+  ConnectionScope,
 } from "effect-sql/query";
 
 const ErrorFromPg = (error?: Error) =>
@@ -99,32 +100,6 @@ export function Driver<C extends Client<pg.Client>>(): Driver<C> {
     savepoint: (name: string) => runQuery(`release savepoint ${name}`),
   };
 
-  const sandboxed = (
-    driver: Driver<C>,
-    scope: Scope.CloseableScope,
-    connectionString: string
-  ) =>
-    pipe(
-      Effect.acquireRelease(
-        Effect.flatMap(connect(connectionString), (client) =>
-          Effect.zipRight(
-            // TODO? use actual transaction code to honor isolation level
-            runQueryImpl(client, "start transaction", []),
-            Effect.succeed(client)
-          )
-        ),
-        (client) =>
-          pipe(
-            Effect.zipRight(
-              runQueryImpl(client, "rollback", []),
-              driver.disconnect(client)
-            ),
-            Effect.orDie
-          )
-      ),
-      Scope.extend(scope)
-    );
-
   const sandbox = (
     driver: Driver<C>
   ): Effect.Effect<never, never, SandboxedDriver<C>> =>
@@ -132,9 +107,20 @@ export function Driver<C extends Client<pg.Client>>(): Driver<C> {
       Scope.make(),
       Effect.map((scope) => ({
         ...driver,
-        connect: (connectionString: string) =>
-          sandboxed(driver, scope, connectionString),
-        disconnect: () => Effect.unit(),
+        acquire: (client) =>
+          Effect.zipRight(
+            Effect.all(
+              Effect.sync(() => console.log("acquire")),
+              runQueryImpl(client, `begin`, [])
+            ),
+            Effect.succeed(client)
+          ),
+        release: (client) =>
+          Effect.zipRight(
+            Effect.sync(() => console.log("release")),
+            runQueryImpl(client, `rollback`, [])
+          ),
+        scoped: (self) => Effect.provideService(self, ConnectionScope, scope),
         unsandbox: () => Scope.close(scope, Exit.unit()),
       }))
     );
@@ -142,6 +128,9 @@ export function Driver<C extends Client<pg.Client>>(): Driver<C> {
   return {
     connect,
     runQuery: runQueryImpl,
+    scoped: identity,
+    acquire: (x) => Effect.succeed(x),
+    release: () => Effect.unit(),
     disconnect,
     start,
     rollback,

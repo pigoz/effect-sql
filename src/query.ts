@@ -89,8 +89,17 @@ export const Serializable = IsolationLevelService("serializable");
 type DriverQuery = Effect.Effect<ConnectionPool, DatabaseError, QueryResult>;
 
 export interface Driver<C extends Client = Client> {
+  // builds / destroys a client to insert into the pool
   connect(connectionString: string): Effect.Effect<never, DatabaseError, C>;
   disconnect(client: C): Effect.Effect<never, DatabaseError, void>;
+
+  // acquires / releases a client to the pool
+  acquire(client: C): Effect.Effect<Scope.Scope, DatabaseError, C>;
+  release(client: C): Effect.Effect<never, DatabaseError, void>;
+
+  scoped(
+    x: Effect.Effect<ConnectionScope, DatabaseError, C>
+  ): Effect.Effect<ConnectionScope, DatabaseError, C>;
 
   runQuery(
     client: C,
@@ -98,6 +107,8 @@ export interface Driver<C extends Client = Client> {
     params: readonly unknown[]
   ): Effect.Effect<never, DatabaseError, QueryResult>;
 
+  // Remove dependency on ConnectionPool and pass C to match other Driver
+  // funtions
   start: {
     savepoint(name: string): DriverQuery;
     transaction(): DriverQuery;
@@ -117,7 +128,6 @@ export interface Driver<C extends Client = Client> {
 }
 
 export interface SandboxedDriver<C extends Client = Client> extends Driver<C> {
-  client: C;
   unsandbox(): Effect.Effect<never, never, void>;
 }
 
@@ -173,14 +183,22 @@ export function ConnectionPoolScopedService(
 export function connect(
   onExistingMapper: (client: Client) => Client = identity
 ) {
-  return Effect.contextWithEffect((r: Context.Context<never>) =>
-    Option.match(
-      Context.getOption(r, Client),
-      () =>
-        Effect.flatMap(ConnectionPool, (service) =>
-          TaggedScope.tag(Pool.get(service.pool), ConnectionScope)
-        ),
-      (client) => Effect.succeed(onExistingMapper(client))
+  return Effect.flatMap(ConnectionPool, (service) =>
+    service.driver.scoped(
+      Effect.contextWithEffect((r: Context.Context<never>) =>
+        Option.match(
+          Context.getOption(r, Client),
+          () =>
+            pipe(
+              Effect.acquireRelease(
+                Effect.flatMap(Pool.get(service.pool), service.driver.acquire),
+                (client) => Effect.orDie(service.driver.release(client))
+              ),
+              TaggedScope.tag(ConnectionScope)
+            ),
+          (client) => Effect.succeed(onExistingMapper(client))
+        )
+      )
     )
   );
 }
