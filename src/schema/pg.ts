@@ -6,11 +6,10 @@ import { ConnectionScope, connect } from "effect-sql/query";
 import * as TaggedScope from "effect-sql/TaggedScope";
 import { MigrationError } from "effect-sql/errors";
 
-import { drizzle } from "drizzle-orm/node-postgres/driver.js";
-import { migrate as dmigrate } from "drizzle-orm/node-postgres/migrator.js";
-import { NodePgClient } from "drizzle-orm/node-postgres/session.js";
+import { drizzle, NodePgClient } from "drizzle-orm/node-postgres";
+import { migrate as dmigrate } from "drizzle-orm/node-postgres/migrator";
 
-export * from "drizzle-orm/pg-core/index.js";
+export * from "drizzle-orm/pg-core";
 
 export { InferModel } from "drizzle-orm";
 
