@@ -9,18 +9,8 @@ import {
   afterQueryHook,
 } from "effect-sql/query";
 
-import {
-  DummyDriver,
-  Kysely,
-  KyselyConfig,
-  KyselyPlugin,
-  CamelCasePlugin,
-  PluginTransformResultArgs,
-  QueryResult,
-  UnknownRow,
-  Compilable,
-  InferResult,
-} from "kysely";
+import { Kysely, QueryResult, Compilable, InferResult } from "kysely";
+import { DatabaseError } from "effect-sql/errors";
 
 const withBuilder = <R, E, A>(
   self: Effect.Effect<R, E, A>
@@ -30,7 +20,7 @@ const withBuilder = <R, E, A>(
       self,
       AfterQueryHook,
       afterQueryHook({
-        hook: (_) => Effect.succeed(builder.afterQueryHook(_)),
+        hook: (_) => builder.afterQueryHook(_),
       })
     )
   );
@@ -69,68 +59,36 @@ export function runQueryExactlyOne<
   return withBuilder(runRawQueryExactlyOne<A>(sql, parameters));
 }
 
-class SyncCamelCasePlugin extends CamelCasePlugin implements SyncKyselyPlugin {
-  // same code from transformResult() withouth the pointless promise
-  transformResultSync(
-    args: Omit<PluginTransformResultArgs, "queryId">
-  ): QueryResult<UnknownRow> {
-    if (args.result.rows && Array.isArray(args.result.rows)) {
-      return {
-        ...args.result,
-        rows: args.result.rows.map((row) => this.mapRow(row)),
-      };
-    }
-
-    return args.result;
-  }
-}
-
-export interface SyncKyselyPlugin extends KyselyPlugin {
-  transformResultSync(
-    args: Omit<PluginTransformResultArgs, "queryId">
-  ): QueryResult<UnknownRow>;
-}
-
-export interface QueryBuilderConfig {
-  useCamelCaseTransformer?: boolean;
-}
-
 export interface KyselyQueryBuilder {
   readonly _: unique symbol;
 }
 
 export const KyselyQueryBuilder = Context.Tag<
   KyselyQueryBuilder,
-  QueryBuilderDsl<any>
+  KyselyEffect<any>
 >(Symbol.for("pigoz/effect-sql/KyselyQueryBuilder"));
 
-export class QueryBuilderDsl<Database> extends Kysely<Database> {
-  readonly #plugins: readonly SyncKyselyPlugin[];
-
-  constructor(
-    config: Omit<KyselyConfig["dialect"], "createDriver"> & QueryBuilderConfig
-  ) {
-    const plugins: SyncKyselyPlugin[] = config.useCamelCaseTransformer
-      ? [new SyncCamelCasePlugin()]
-      : [];
-
-    super({
-      dialect: {
-        createAdapter: config.createAdapter,
-        createIntrospector: config.createIntrospector,
-        createQueryCompiler: config.createQueryCompiler,
-        createDriver: () => new DummyDriver(),
-      },
-      plugins,
-    });
-
-    this.#plugins = plugins;
+export class KyselyEffect<Database> extends Kysely<Database> {
+  afterQueryHook<X>(
+    result: QueryResult<X>
+  ): Effect.Effect<never, DatabaseError, QueryResult<X>> {
+    return Effect.tryCatchPromise(
+      () => this.transformResult(result),
+      (err) =>
+        new DatabaseError({
+          message:
+            err instanceof Error ? err.message : "generic afterQueryHook error",
+        })
+    );
   }
 
-  afterQueryHook(result: QueryResult<UnknownRow>) {
-    this.#plugins.forEach((plugin) => {
-      result = plugin.transformResultSync({ result });
-    });
+  async transformResult<T>(result: QueryResult<any>): Promise<QueryResult<T>> {
+    const queryId = { queryId: "unsupported" };
+
+    for (const plugin of this.getExecutor().plugins) {
+      result = await plugin.transformResult({ result, queryId });
+    }
+
     return result;
   }
 }

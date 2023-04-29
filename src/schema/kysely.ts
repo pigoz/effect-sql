@@ -1,6 +1,5 @@
 import { Table } from "drizzle-orm";
 import { Kyselify } from "drizzle-orm/kysely";
-import { QueryBuilderConfig } from "effect-sql/builders/kysely";
 
 type CamelCaseString<S extends string> =
   S extends `${infer P1}_${infer P2}${infer P3}`
@@ -17,13 +16,6 @@ export type InferDatabase<T extends Record<string, unknown>> = {
     : never;
 };
 
-export type CamelCase<D = InferDatabase<any>> = {
+export type CamelCaseDatabase<D = InferDatabase<any>> = {
   [K in keyof D]: ColumnsToCamelCase<D[K]>;
 };
-
-export type InferDatabaseFromConfig<
-  T extends Record<string, unknown>,
-  C extends QueryBuilderConfig
-> = C["useCamelCaseTransformer"] extends true
-  ? CamelCase<InferDatabase<T>>
-  : InferDatabase<T>;
