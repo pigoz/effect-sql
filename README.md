@@ -13,6 +13,7 @@ It's composed of several decoupled pieces, from which you should be able to pick
     - (*Doing*): Driver based abstraction to support multiple database engines (focusing on getting PostgreSQL🐘 right initially)
     - (*Planned*): Non pooled connections (i.e. PlanetScale)
     - (*Planned*): Improved support for sandboxed database drivers
+    - (*Planned*): Multiple connection strings for HA
 
   - (*Optional*) `effect-sql/schema`: TypeScript-first schema declaration based on [Drizzle](https://github.com/drizzle-team/drizzle-orm). Features:
     - Infer Kysely database using `effect-sql/schema/kysely`.
