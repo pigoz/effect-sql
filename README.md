@@ -34,7 +34,9 @@ import {
   runQueryExactlyOne,
   ConnectionPool,
   ConnectionPoolScopedService,
+  Driver,
 } from "effect-sql/query";
+import { PostgreSqlDriver } from "effect-sql/drivers/pg";
 
 const post1 = runQuery(`select * from "posts"`);
 //    ^ Effect<Driver, ConnectionPool, DatabaseError, QueryResult<UnknownRow>>
@@ -45,6 +47,11 @@ const post2 = runQueryOne(`select * from "posts" where id = 1`);
 const post3 = runQueryExactlyOne(`select * from "posts" where id = 1`);
 //    ^ Effect<Driver, ConnectionPool, DatabaseError | NotFound | TooMany, UnknownRow>
 
+const DriverLive = Layer.succeed(
+  Driver,
+  PostgreSqlDriver(),
+);
+
 const ConnectionPoolLive = Layer.scoped(
   ConnectionPool,
   ConnectionPoolScopedService(),
@@ -52,7 +59,10 @@ const ConnectionPoolLive = Layer.scoped(
 
 pipe(
   post3,
-  Effect.provideLayer(ConnectionPoolLive)
+  Effect.provideLayer(pipe(
+    DriverLive,
+    Layer.provideMerge(ConnectionPoolLive)
+  )),
   Effect.runFork
 );
 ```
@@ -115,14 +125,26 @@ transaction(Effect.all(
 import {
   ConnectionPool,
   ConnectionPoolScopedService,
+  Driver,
   AfterQueryHook,
   afterQueryHook
 } from "effect-sql/query";
+
+import { MigrationLayer } from "effect-sql/schema/pg";
+import { PostgreSqlDriver } from "effect-sql/drivers/pg";
+
+const DriverLive = Layer.succeed(
+  Driver,
+  PostgreSqlDriver(),
+);
 
 const ConnectionPoolLive = Layer.scoped(
   ConnectionPool,
   ConnectionPoolScopedService(),
 );
+
+const MigrationLive =
+  MigrationLayer(path.resolve(__dirname, "../migrations/pg"));
 
 // Hook that picks up the useCamelCaseTransformer configuration option
 // used above and handles camelization of QueryResult rows
@@ -138,6 +160,12 @@ pipe(
       ConnectionPoolLive,
       AfterQueryHookLive
     )),
+  Effect.provideLayer(pipe(
+    DriverLive,
+    Layer.provideMerge(ConnectionPoolLive),
+    Layer.provideMerge(MigrationLive),
+    Layer.provideMerge(AfterQueryHookLive)
+  )),
   Effect.runFork
 )
 ```
