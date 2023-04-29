@@ -38,9 +38,9 @@ export const AfterQueryHook = Context.Tag<AfterQueryHook>(
 export const afterQueryHook = Data.tagged<AfterQueryHook>("AfterQueryHook");
 
 // Connection Pool Types
-export interface Client<A = unknown> extends Data.Case {
+export interface Client extends Data.Case {
   _tag: "Client";
-  native: A;
+  native: unknown;
   savepoint: number;
 }
 

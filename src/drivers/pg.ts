@@ -12,6 +12,10 @@ import {
   IsolationLevel,
 } from "effect-sql/query";
 
+interface PostgreSqlClient extends Client {
+  native: pg.Client;
+}
+
 const ErrorFromPg = (error?: Error) =>
   error
     ? Effect.fail(
@@ -29,7 +33,7 @@ function QueryResultFromPg<A>(result: pg.QueryResult): QueryResult<A> {
   };
 }
 
-export function PostgreSqlDriver<C extends Client<pg.Client>>(): Driver<C> {
+export function PostgreSqlDriver<C extends PostgreSqlClient>(): Driver<C> {
   const connect = (connectionString: string) =>
     pipe(
       Effect.sync(() => new pg.Client({ connectionString })),
@@ -111,7 +115,7 @@ export function PostgreSqlDriver<C extends Client<pg.Client>>(): Driver<C> {
 }
 
 export function PostgreSqlSandboxedDriver<
-  C extends Client<pg.Client>
+  C extends PostgreSqlClient
 >(): Driver<C> {
   const driver = PostgreSqlDriver<C>();
   driver.commit.transaction = driver.rollback.transaction;
