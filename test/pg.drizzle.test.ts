@@ -40,7 +40,7 @@ describe("pg – drizzle", () => {
       expect(res1).toEqual(
         E.left(
           new NotFound({
-            sql: 'select "id", "name" from "cities"',
+            sql: 'select "id", "name", "created_at", "updated_at" from "cities"',
             parameters: [],
           })
         )
@@ -80,7 +80,7 @@ describe("pg – drizzle", () => {
       expect(res1).toEqual(
         E.left(
           new NotFound({
-            sql: 'select "id", "name" from "cities"',
+            sql: 'select "id", "name", "created_at", "updated_at" from "cities"',
             parameters: [],
           })
         )

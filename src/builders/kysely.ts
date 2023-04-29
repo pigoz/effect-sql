@@ -28,14 +28,7 @@ export function runQueryRows<
   C extends Compilable<any>,
   A extends InferResult<C>[number]
 >(compilable: C) {
-  const { sql, parameters } = compilable.compile();
-  return Effect.flatMap(KyselyQueryBuilder, (builder) =>
-    pipe(
-      runRawQuery<A>(sql, parameters),
-      Effect.flatMap((_) => builder.afterQueryHook(_)),
-      Effect.map((result) => result.rows)
-    )
-  );
+  return Effect.map(runQuery<C, A>(compilable), (result) => result.rows);
 }
 
 export function runQueryOne<
