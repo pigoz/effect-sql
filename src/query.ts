@@ -26,18 +26,6 @@ export interface QueryResult<T = UnknownRow> {
   rows: T[];
 }
 
-// Hooks
-export interface AfterQueryHook extends Data.Case {
-  _tag: "AfterQueryHook";
-  hook: (res: QueryResult) => Effect.Effect<never, DatabaseError, QueryResult>;
-}
-
-export const AfterQueryHook = Context.Tag<AfterQueryHook>(
-  Symbol.for("pigoz/effect-sql/AfterQueryHook")
-);
-
-export const afterQueryHook = Data.tagged<AfterQueryHook>("AfterQueryHook");
-
 // Connection Pool Types
 export interface Client extends Data.Case {
   _tag: "Client";
@@ -197,13 +185,6 @@ export function runQuery<A = UnknownRow>(
       driver.runQuery(client, sql, parameters ?? [])
     ),
     connected,
-    Effect.flatMap((result) =>
-      Effect.matchEffect(
-        Effectx.optionalService(AfterQueryHook),
-        () => Effect.succeed(result),
-        (service) => service.hook(result)
-      )
-    ),
     Effect.map((x) => x as QueryResult<A>)
   );
 }

@@ -5,32 +5,23 @@ import {
   runQuery as runRawQuery,
   runQueryOne as runRawQueryOne,
   runQueryExactlyOne as runRawQueryExactlyOne,
-  AfterQueryHook,
-  afterQueryHook,
 } from "effect-sql/query";
 
 import { Kysely, QueryResult, Compilable, InferResult } from "kysely";
 import { DatabaseError } from "effect-sql/errors";
-
-const withBuilder = <R, E, A>(
-  self: Effect.Effect<R, E, A>
-): Effect.Effect<R | KyselyQueryBuilder, E, A> =>
-  Effect.flatMap(KyselyQueryBuilder, (builder) =>
-    Effect.provideService(
-      self,
-      AfterQueryHook,
-      afterQueryHook({
-        hook: (_) => builder.afterQueryHook(_),
-      })
-    )
-  );
+import { pipe } from "@effect/data/Function";
 
 export function runQuery<
   C extends Compilable<unknown>,
   A extends InferResult<C>[number]
 >(compilable: C) {
   const { sql, parameters } = compilable.compile();
-  return withBuilder(runRawQuery<A>(sql, parameters));
+  return Effect.flatMap(KyselyQueryBuilder, (builder) =>
+    pipe(
+      runRawQuery<A>(sql, parameters),
+      Effect.flatMap((_) => builder.afterQueryHook(_))
+    )
+  );
 }
 
 export function runQueryRows<
@@ -38,8 +29,12 @@ export function runQueryRows<
   A extends InferResult<C>[number]
 >(compilable: C) {
   const { sql, parameters } = compilable.compile();
-  return withBuilder(
-    Effect.map(runRawQuery<A>(sql, parameters), (result) => result.rows)
+  return Effect.flatMap(KyselyQueryBuilder, (builder) =>
+    pipe(
+      runRawQuery<A>(sql, parameters),
+      Effect.flatMap((_) => builder.afterQueryHook(_)),
+      Effect.map((result) => result.rows)
+    )
   );
 }
 
@@ -48,7 +43,12 @@ export function runQueryOne<
   A extends InferResult<C>[number]
 >(compilable: C) {
   const { sql, parameters } = compilable.compile();
-  return withBuilder(runRawQueryOne<A>(sql, parameters));
+  return Effect.flatMap(KyselyQueryBuilder, (builder) =>
+    pipe(
+      runRawQueryOne<A>(sql, parameters),
+      Effect.flatMap((_) => builder.afterQueryHookOne(_))
+    )
+  );
 }
 
 export function runQueryExactlyOne<
@@ -56,7 +56,12 @@ export function runQueryExactlyOne<
   A extends InferResult<C>[number]
 >(compilable: C) {
   const { sql, parameters } = compilable.compile();
-  return withBuilder(runRawQueryExactlyOne<A>(sql, parameters));
+  return Effect.flatMap(KyselyQueryBuilder, (builder) =>
+    pipe(
+      runRawQueryExactlyOne<A>(sql, parameters),
+      Effect.flatMap((_) => builder.afterQueryHookOne(_))
+    )
+  );
 }
 
 export interface KyselyQueryBuilder {
@@ -73,16 +78,30 @@ export class KyselyEffect<Database> extends Kysely<Database> {
     result: QueryResult<X>
   ): Effect.Effect<never, DatabaseError, QueryResult<X>> {
     return Effect.tryCatchPromise(
-      () => this.transformResult(result),
-      (err) =>
-        new DatabaseError({
-          message:
-            err instanceof Error ? err.message : "generic afterQueryHook error",
-        })
+      () => this.#transformResult(result),
+      (err) => this.#databaseError(err)
     );
   }
 
-  async transformResult<T>(result: QueryResult<any>): Promise<QueryResult<T>> {
+  afterQueryHookOne<X>(result: X): Effect.Effect<never, DatabaseError, X> {
+    return pipe(
+      Effect.tryCatchPromise(
+        () => this.#transformResult<X>({ rows: [result] }),
+        (err) => this.#databaseError(err)
+      ),
+      Effect.map((x) => x.rows[0]!)
+    );
+  }
+
+  #databaseError(err: unknown) {
+    return new DatabaseError({
+      message:
+        err instanceof Error ? err.message : "generic afterQueryHook error",
+    });
+  }
+
+  async #transformResult<T>(result: QueryResult<any>): Promise<QueryResult<T>> {
+    // XXX figure out a way to get to the proper queryId
     const queryId = { queryId: "unsupported" };
 
     for (const plugin of this.getExecutor().plugins) {
