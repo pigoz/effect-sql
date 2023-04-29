@@ -13,6 +13,7 @@ import * as ConfigSecret from "@effect/io/Config/Secret";
 import * as Pool from "@effect/io/Pool";
 import { ConfigError } from "@effect/io/Config/Error";
 import * as TaggedScope from "effect-sql/TaggedScope";
+import * as Effectx from "effect-sql/Effectx";
 import { DatabaseError, NotFound, TooMany } from "effect-sql/errors";
 
 // General types
@@ -166,15 +167,13 @@ export function ConnectionPoolScopedService(
 export function connect(
   onExistingMapper: (client: Client) => Client = identity
 ) {
-  return Effect.contextWithEffect((r: Context.Context<never>) =>
-    Option.match(
-      Context.getOption(r, Client),
-      () =>
-        Effect.flatMap(ConnectionPool, (service) =>
-          TaggedScope.tag(Pool.get(service.pool), ConnectionScope)
-        ),
-      (client) => Effect.succeed(onExistingMapper(client))
-    )
+  return Effect.matchEffect(
+    Effectx.optionalService(Client),
+    () =>
+      Effect.flatMap(ConnectionPool, (service) =>
+        TaggedScope.tag(Pool.get(service.pool), ConnectionScope)
+      ),
+    (client) => Effect.succeed(onExistingMapper(client))
   );
 }
 
@@ -200,14 +199,12 @@ export function runQuery<A = UnknownRow>(
     connected,
     Effect.flatMap((result) =>
       Effect.match(
-        Effect.contextWithEffect((context: Context.Context<never>) =>
-          Context.getOption(context, AfterQueryHook)
-        ),
+        Effectx.optionalService(AfterQueryHook),
         () => result,
         (service) => service.hook(result)
       )
     ),
-    Effect.map((x) => x as any)
+    Effect.map((x) => x as QueryResult<A>)
   );
 }
 
