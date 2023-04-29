@@ -112,7 +112,7 @@ const post2 = runQueryOne(db.selectFrom("posts"));
 //    ^ Effect<Driver, ConnectionPool, DatabaseError | NotFound, { id: number, name: string }>
 
 const post3 = runQueryExactlyOne(db.selectFrom("posts"));
-//    ^ Effect<Driver, ConnectionPool, DatabaseError | NotFound | TooMany, { id: number, name: string }>
+//    ^ Effect<Driver, ConnectionPool, DatabaseError | NotFound | TooMany, { id: number, ... }>
 
 transaction(Effect.all(
   db.insertInto('posts').values({ title: 'Solvet saeclum' }),
