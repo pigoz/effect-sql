@@ -86,32 +86,27 @@ export const ReadCommitted = IsolationLevelService("read committed");
 export const RepeatableRead = IsolationLevelService("repeatable read");
 export const Serializable = IsolationLevelService("serializable");
 
-export interface Driver<
-  C extends Client = Client,
-  Query = Effect.Effect<ConnectionPool, DatabaseError, QueryResult>
-> {
+type DriverQuery = Effect.Effect<never, DatabaseError, QueryResult>;
+
+export interface Driver<C extends Client = Client> {
   connect(connectionString: string): Effect.Effect<never, DatabaseError, C>;
   disconnect(client: C): Effect.Effect<never, DatabaseError, void>;
 
-  runQuery(
-    client: C,
-    sql: string,
-    params: readonly unknown[]
-  ): Effect.Effect<never, DatabaseError, QueryResult>;
+  runQuery(client: C, sql: string, params: readonly unknown[]): DriverQuery;
 
   start: {
-    savepoint(name: string): Query;
-    transaction(): Query;
+    savepoint(client: C, name: string): DriverQuery;
+    transaction(client: C): DriverQuery;
   };
 
   rollback: {
-    savepoint(name: string): Query;
-    transaction(): Query;
+    savepoint(client: C, name: string): DriverQuery;
+    transaction(client: C): DriverQuery;
   };
 
   commit: {
-    savepoint(name: string): Query;
-    transaction(): Query;
+    savepoint(client: C, name: string): DriverQuery;
+    transaction(client: C): DriverQuery;
   };
 }
 
@@ -256,12 +251,10 @@ export function runQueryExactlyOne<A>(
   );
 }
 
-type DriverQuery = Effect.Effect<ConnectionPool, DatabaseError, QueryResult>;
-
 const matchSavepoint = (
   fn: (driver: Driver) => {
-    savepoint: (name: string) => DriverQuery;
-    transaction: () => DriverQuery;
+    savepoint: (client: Client, name: string) => DriverQuery;
+    transaction: (client: Client) => DriverQuery;
   }
 ) =>
   Effect.flatMap(
@@ -269,8 +262,8 @@ const matchSavepoint = (
     ({ client, pool }) => {
       const implementation = fn(pool.driver);
       return client.savepoint > 0
-        ? implementation.savepoint(`savepoint_${client.savepoint}`)
-        : implementation.transaction();
+        ? implementation.savepoint(client, `savepoint_${client.savepoint}`)
+        : implementation.transaction(client);
     }
   );
 

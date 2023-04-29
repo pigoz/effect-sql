@@ -8,7 +8,6 @@ import {
   Client,
   Driver,
   QueryResult,
-  runQuery,
   ClientService,
   IsolationLevel,
 } from "effect-sql/query";
@@ -79,26 +78,33 @@ export function Driver<C extends Client<pg.Client>>(): Driver<C> {
     disconnect,
 
     start: {
-      transaction: () =>
+      transaction: (client) =>
         Effect.contextWithEffect((r: Context.Context<never>) =>
           Option.match(
             Context.getOption(r, IsolationLevel),
-            () => runQuery(`start transaction`),
+            () => runQueryImpl(client, `start transaction`, []),
             (isolation) =>
-              runQuery(`start transaction isolation level ${isolation.sql}`)
+              runQueryImpl(
+                client,
+                `start transaction isolation level ${isolation.sql}`,
+                []
+              )
           )
         ),
-      savepoint: (name: string) => runQuery(`savepoint ${name}`),
+      savepoint: (client, name) =>
+        runQueryImpl(client, `savepoint ${name}`, []),
     },
 
     rollback: {
-      transaction: () => runQuery(`rollback`),
-      savepoint: (name: string) => runQuery(`rollback to ${name}`),
+      transaction: (client) => runQueryImpl(client, `rollback`, []),
+      savepoint: (client, name) =>
+        runQueryImpl(client, `rollback to ${name}`, []),
     },
 
     commit: {
-      transaction: () => runQuery(`commit`),
-      savepoint: (name: string) => runQuery(`release savepoint ${name}`),
+      transaction: (client) => runQueryImpl(client, `commit`, []),
+      savepoint: (client, name) =>
+        runQueryImpl(client, `release savepoint ${name}`, []),
     },
   };
 }
