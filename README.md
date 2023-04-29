@@ -2,9 +2,9 @@
 
 Relational Databases with Effect!
 
-This project is trying to become a one stop shop to deal with databases in [Effect](https://github.com/Effect-TS).
+This project aims to become a one stop shop to deal with relational databases in [Effect](https://github.com/Effect-TS).
 
-It's composed of several decoupled pieces, from which you should be able to pick and choose whatever you want.
+It's composed of several decoupled pieces, from which you should be able to pick and choose whatever you want to build a "database prelude" that best fits your application.
 
   - `effect-sql/query` is a wrapper over Node database drivers. It provides an Effectful interface to operate with raw SQL strings and little overhead. A spiritual alternative to `effect-pg`, `effect-mysql`, and such. It includes:
     - Layer to manage the ConnectionPool using Effect's Pool
@@ -12,11 +12,12 @@ It's composed of several decoupled pieces, from which you should be able to pick
     - DSL for nested transactions (using savepoints!)
     - (*Doing*): Driver based abstraction to support multiple database engines (focusing on getting PostgreSQL🐘 right initially)
     - (*Planned*): Non pooled connections (i.e. PlanetScale)
+    - (*Planned*): Improved support for sandboxed database drivers
 
   - (*Optional*) `effect-sql/schema`: TypeScript-first schema declaration based on [Drizzle](https://github.com/drizzle-team/drizzle-orm). Features:
     - Infer Kysely database using `effect-sql/schema/kysely`.
     - (*Planned*): Derive `@effect/schema` types
-    - (*Planned*): Derive fast check arbitraries
+    - (*Planned*): Factory system with faker or fast check
 
   - (*Optional*) `effect-sql/builders/*`: Query builders to create typesafe queries and to execute them. They are built on top of `effect-sql/query`
     - [Kysely](https://github.com/kysely-org/kysely): "blessed" solution
@@ -36,13 +37,13 @@ import {
 } from "effect-sql/query";
 
 const post1 = runQuery(`select * from "posts"`);
-//    ^ Effect<ConnectionPool, DatabaseError, QueryResult<UnknownRow>>
+//    ^ Effect<Driver, ConnectionPool, DatabaseError, QueryResult<UnknownRow>>
 
 const post2 = runQueryOne(`select * from "posts" where id = 1`);
-//    ^ Effect<ConnectionPool, DatabaseError | NotFound, UnknownRow>
+//    ^ Effect<Driver, ConnectionPool, DatabaseError | NotFound, UnknownRow>
 
 const post3 = runQueryExactlyOne(`select * from "posts" where id = 1`);
-//    ^ Effect<ConnectionPool, DatabaseError | NotFound | TooMany, UnknownRow>
+//    ^ Effect<Driver, ConnectionPool, DatabaseError | NotFound | TooMany, UnknownRow>
 
 const ConnectionPoolLive = Layer.scoped(
   ConnectionPool,
@@ -95,13 +96,13 @@ import { transaction } from "effect-sql/query";
 import { db } from "./dsl.ts";
 
 const post1 = runQuery(db.selectFrom("posts"));
-//    ^ Effect<ConnectionPool, DatabaseError, QueryResult<{ id: number, name: string }>>
+//    ^ Effect<Driver, ConnectionPool, DatabaseError, QueryResult<{ id: number, name: string }>>
 
 const post2 = runQueryOne(db.selectFrom("posts"));
-//    ^ Effect<ConnectionPool, DatabaseError | NotFound, { id: number, name: string }>
+//    ^ Effect<Driver, ConnectionPool, DatabaseError | NotFound, { id: number, name: string }>
 
 const post3 = runQueryExactlyOne(db.selectFrom("posts"));
-//    ^ Effect<ConnectionPool, DatabaseError | NotFound | TooMany, { id: number, name: string }>
+//    ^ Effect<Driver, ConnectionPool, DatabaseError | NotFound | TooMany, { id: number, name: string }>
 
 transaction(Effect.all(
   db.insertInto('posts').values({ title: 'Solvet saeclum' }),
