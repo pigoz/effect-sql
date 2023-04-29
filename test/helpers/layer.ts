@@ -8,7 +8,11 @@ import * as Context from "@effect/data/Context";
 
 import { PostgreSqlContainer } from "testcontainers";
 import * as path from "path";
-import { ConnectionPool, ConnectionPoolScopedService } from "effect-sql/query";
+import {
+  ConnectionPool,
+  ConnectionPoolScopedService,
+  Driver,
+} from "effect-sql/query";
 import * as Config from "@effect/io/Config";
 import * as ConfigSecret from "@effect/io/Config/Secret";
 import { MigrationLayer } from "effect-sql/schema/pg";
@@ -16,7 +20,7 @@ import { MigrationLayer } from "effect-sql/schema/pg";
 import { afterAll, beforeAll } from "vitest";
 import { DatabaseError, MigrationError } from "effect-sql/errors";
 import { ConfigError } from "@effect/io/Config/Error";
-import { SandboxedDriver as PostgreSqlDriver } from "effect-sql/drivers/pg";
+import { PostgreSqlSandboxedDriver } from "effect-sql/drivers/pg";
 
 export const testContainer = pipe(
   Effect.promise(async () => {
@@ -31,21 +35,24 @@ export const testContainer = pipe(
   })
 );
 
-export type TestLayer = ConnectionPool;
-
 export const testLayer = pipe(
-  Layer.scoped(
-    ConnectionPool,
-    Effect.flatMap(testContainer, (uri) =>
-      ConnectionPoolScopedService(PostgreSqlDriver(), {
-        databaseUrl: Config.succeed(ConfigSecret.fromString(uri)),
-      })
+  Layer.succeed(Driver, PostgreSqlSandboxedDriver()),
+  Layer.provideMerge(
+    Layer.scoped(
+      ConnectionPool,
+      Effect.flatMap(testContainer, (uri) =>
+        ConnectionPoolScopedService({
+          databaseUrl: Config.succeed(ConfigSecret.fromString(uri)),
+        })
+      )
     )
   ),
   Layer.provideMerge(
     MigrationLayer(path.resolve(__dirname, "../migrations/pg"))
   )
 );
+
+export type TestLayer = ConnectionPool | Driver;
 
 const makeRuntime = <R, E, A>(layer: Layer.Layer<R, E, A>) =>
   Effect.gen(function* ($) {

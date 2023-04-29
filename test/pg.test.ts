@@ -17,7 +17,6 @@ import {
 } from "effect-sql/query";
 import { DatabaseError, NotFound, TooMany } from "effect-sql/errors";
 import { usingLayer, testLayer } from "./helpers/layer";
-import { Driver } from "effect-sql/drivers/pg";
 
 usingLayer(testLayer);
 
@@ -142,7 +141,7 @@ describe("pg", () => {
         Effect.provideSomeLayer(
           Layer.scoped(
             ConnectionPool,
-            ConnectionPoolScopedService(Driver(), {
+            ConnectionPoolScopedService({
               databaseUrl: Config.succeed(
                 ConfigSecret.fromString("postgres://127.0.0.1:80")
               ),

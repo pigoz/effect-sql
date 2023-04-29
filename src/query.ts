@@ -58,7 +58,6 @@ export const ClientService = Data.tagged<Client>("Client");
 
 export interface ConnectionPool extends Data.Case {
   _tag: "ConnectionPool";
-  driver: Driver<Client>;
   pool: Pool.Pool<DatabaseError, Client>;
 }
 
@@ -89,6 +88,8 @@ export const Serializable = IsolationLevelService("serializable");
 type DriverQuery = Effect.Effect<never, DatabaseError, QueryResult>;
 
 export interface Driver<C extends Client = Client> {
+  _tag: "Driver";
+
   connect(connectionString: string): Effect.Effect<never, DatabaseError, C>;
   disconnect(client: C): Effect.Effect<never, DatabaseError, void>;
 
@@ -110,6 +111,10 @@ export interface Driver<C extends Client = Client> {
   };
 }
 
+export const Driver = Context.Tag<Driver>(
+  Symbol.for("pigoz/effect-sql/Driver")
+);
+
 const defaultConfig = {
   databaseUrl: Config.secret("DATABASE_URL"),
   // overrides the one in the URL, useful to send out of bound commands like
@@ -124,10 +129,8 @@ const defaultConfig = {
 type DatabaseConfig = typeof defaultConfig;
 
 export function ConnectionPoolScopedService(
-  driver: Driver<Client>,
-  config_: Partial<DatabaseConfig>
-): Effect.Effect<Scope.Scope, ConfigError, ConnectionPool> {
-  const { ...config } = config_;
+  config: Partial<DatabaseConfig>
+): Effect.Effect<Scope.Scope | Driver, ConfigError, ConnectionPool> {
   const getConnectionString = pipe(
     Effect.config(Config.all({ ...defaultConfig, ...config })),
     Effect.map(({ databaseUrl, databaseName }) =>
@@ -144,9 +147,10 @@ export function ConnectionPoolScopedService(
   );
 
   const createConnectionPool = (connectionString: string) => {
-    const get = Effect.acquireRelease(
-      driver.connect(connectionString),
-      (client) => Effect.orDie(driver.disconnect(client))
+    const get = Effect.flatMap(Driver, (driver) =>
+      Effect.acquireRelease(driver.connect(connectionString), (client) =>
+        Effect.orDie(driver.disconnect(client))
+      )
     );
 
     return Pool.makeWithTTL(get, 1, 20, Duration.seconds(60));
@@ -155,7 +159,7 @@ export function ConnectionPoolScopedService(
   return pipe(
     getConnectionString,
     Effect.flatMap(createConnectionPool),
-    Effect.map((pool) => ConnectionPoolService({ pool, driver }))
+    Effect.map((pool) => ConnectionPoolService({ pool }))
   );
 }
 
@@ -187,11 +191,11 @@ export function connected<R, E, A>(
 export function runQuery<A = UnknownRow>(
   sql: string,
   parameters?: readonly unknown[]
-): Effect.Effect<ConnectionPool, DatabaseError, QueryResult<A>> {
+): Effect.Effect<ConnectionPool | Driver, DatabaseError, QueryResult<A>> {
   return pipe(
-    Effect.all({ client: Client, pool: ConnectionPool }),
-    Effect.flatMap(({ client, pool }) =>
-      pool.driver.runQuery(client, sql, parameters ?? [])
+    Effect.all({ client: Client, driver: Driver }),
+    Effect.flatMap(({ client, driver }) =>
+      driver.runQuery(client, sql, parameters ?? [])
     ),
     connected,
     Effect.flatMap((result) =>
@@ -210,7 +214,7 @@ export function runQuery<A = UnknownRow>(
 export function runQueryOne<A>(
   sql: string,
   parameters?: readonly unknown[]
-): Effect.Effect<ConnectionPool, DatabaseError | NotFound, A> {
+): Effect.Effect<ConnectionPool | Driver, DatabaseError | NotFound, A> {
   return pipe(
     runQuery<A>(sql, parameters),
     Effect.flatMap((result) =>
@@ -227,7 +231,11 @@ export function runQueryOne<A>(
 export function runQueryExactlyOne<A>(
   sql: string,
   parameters?: readonly unknown[]
-): Effect.Effect<ConnectionPool, DatabaseError | NotFound | TooMany, A> {
+): Effect.Effect<
+  ConnectionPool | Driver,
+  DatabaseError | NotFound | TooMany,
+  A
+> {
   return pipe(
     runQuery<A>(sql, parameters),
     Effect.flatMap(
@@ -258,16 +266,22 @@ const matchSavepoint = (
   }
 ) =>
   Effect.flatMap(
-    Effect.all({ client: Client, pool: ConnectionPool }),
-    ({ client, pool }) => {
-      const implementation = fn(pool.driver);
+    Effect.all({ client: Client, driver: Driver }),
+    ({ client, driver }) => {
+      const implementation = fn(driver);
       return client.savepoint > 0
         ? implementation.savepoint(client, `savepoint_${client.savepoint}`)
         : implementation.transaction(client);
     }
   );
 
-export function transaction<R, E1, A>(self: Effect.Effect<R, E1, A>) {
+export function transaction<R, E1, A>(
+  self: Effect.Effect<R, E1, A>
+): Effect.Effect<
+  ConnectionPool | Driver | Exclude<Exclude<R, Client>, ConnectionScope>,
+  DatabaseError | E1,
+  A
+> {
   const start = matchSavepoint((driver) => driver.start);
   const rollback = matchSavepoint((driver) => driver.rollback);
   const commit = matchSavepoint((driver) => driver.commit);

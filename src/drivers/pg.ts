@@ -29,7 +29,7 @@ function QueryResultFromPg<A>(result: pg.QueryResult): QueryResult<A> {
   };
 }
 
-export function Driver<C extends Client<pg.Client>>(): Driver<C> {
+export function PostgreSqlDriver<C extends Client<pg.Client>>(): Driver<C> {
   const connect = (connectionString: string) =>
     pipe(
       Effect.sync(() => new pg.Client({ connectionString })),
@@ -73,6 +73,7 @@ export function Driver<C extends Client<pg.Client>>(): Driver<C> {
     );
 
   return {
+    _tag: "Driver",
     connect,
     runQuery: runQueryImpl,
     disconnect,
@@ -109,8 +110,10 @@ export function Driver<C extends Client<pg.Client>>(): Driver<C> {
   };
 }
 
-export function SandboxedDriver<C extends Client<pg.Client>>(): Driver<C> {
-  const driver = Driver<C>();
+export function PostgreSqlSandboxedDriver<
+  C extends Client<pg.Client>
+>(): Driver<C> {
+  const driver = PostgreSqlDriver<C>();
   driver.commit.transaction = driver.rollback.transaction;
   return driver;
 }
