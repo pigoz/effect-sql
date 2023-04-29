@@ -3,11 +3,11 @@ import * as E from "@effect/data/Either";
 import * as Effect from "@effect/io/Effect";
 import * as Layer from "@effect/io/Layer";
 import { it, describe, expect } from "./helpers";
-import { AfterQueryHook, afterQueryHook } from "effect-sql/query";
 import {
   runQueryRows,
   runQueryExactlyOne,
   runQueryOne,
+  KyselyQueryBuilder,
 } from "effect-sql/builders/kysely";
 import { NotFound, TooMany } from "effect-sql/errors";
 import { City, User, db } from "./helpers/pg.kysely.dsl";
@@ -19,13 +19,7 @@ const selectName = db.selectFrom("cities").select("name");
 const insert = (name: string) => db.insertInto("cities").values({ name });
 
 usingLayer(
-  Layer.provideMerge(
-    testLayer,
-    Layer.succeed(
-      AfterQueryHook,
-      afterQueryHook({ hook: (_) => db.afterQueryHook(_) })
-    )
-  )
+  Layer.provideMerge(testLayer, Layer.succeed(KyselyQueryBuilder, db))
 );
 
 describe("pg – kysely", () => {

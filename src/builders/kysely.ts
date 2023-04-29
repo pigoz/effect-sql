@@ -1,9 +1,12 @@
 import * as Effect from "@effect/io/Effect";
+import * as Context from "@effect/data/Context";
 
 import {
   runQuery as runRawQuery,
   runQueryOne as runRawQueryOne,
   runQueryExactlyOne as runRawQueryExactlyOne,
+  AfterQueryHook,
+  afterQueryHook,
 } from "effect-sql/query";
 
 import {
@@ -19,12 +22,25 @@ import {
   InferResult,
 } from "kysely";
 
+const withBuilder = <R, E, A>(
+  self: Effect.Effect<R, E, A>
+): Effect.Effect<R | KyselyQueryBuilder, E, A> =>
+  Effect.flatMap(KyselyQueryBuilder, (builder) =>
+    Effect.provideService(
+      self,
+      AfterQueryHook,
+      afterQueryHook({
+        hook: (_) => Effect.succeed(builder.afterQueryHook(_)),
+      })
+    )
+  );
+
 export function runQuery<
   C extends Compilable<unknown>,
   A extends InferResult<C>[number]
 >(compilable: C) {
   const { sql, parameters } = compilable.compile();
-  return runRawQuery<A>(sql, parameters);
+  return withBuilder(runRawQuery<A>(sql, parameters));
 }
 
 export function runQueryRows<
@@ -32,7 +48,9 @@ export function runQueryRows<
   A extends InferResult<C>[number]
 >(compilable: C) {
   const { sql, parameters } = compilable.compile();
-  return Effect.map(runRawQuery<A>(sql, parameters), (result) => result.rows);
+  return withBuilder(
+    Effect.map(runRawQuery<A>(sql, parameters), (result) => result.rows)
+  );
 }
 
 export function runQueryOne<
@@ -40,7 +58,7 @@ export function runQueryOne<
   A extends InferResult<C>[number]
 >(compilable: C) {
   const { sql, parameters } = compilable.compile();
-  return runRawQueryOne<A>(sql, parameters);
+  return withBuilder(runRawQueryOne<A>(sql, parameters));
 }
 
 export function runQueryExactlyOne<
@@ -48,7 +66,7 @@ export function runQueryExactlyOne<
   A extends InferResult<C>[number]
 >(compilable: C) {
   const { sql, parameters } = compilable.compile();
-  return runRawQueryExactlyOne<A>(sql, parameters);
+  return withBuilder(runRawQueryExactlyOne<A>(sql, parameters));
 }
 
 class SyncCamelCasePlugin extends CamelCasePlugin implements SyncKyselyPlugin {
@@ -77,6 +95,15 @@ export interface QueryBuilderConfig {
   useCamelCaseTransformer?: boolean;
 }
 
+export interface KyselyQueryBuilder {
+  readonly _: unique symbol;
+}
+
+export const KyselyQueryBuilder = Context.Tag<
+  KyselyQueryBuilder,
+  QueryBuilderDsl<any>
+>(Symbol.for("pigoz/effect-sql/KyselyQueryBuilder"));
+
 export class QueryBuilderDsl<Database> extends Kysely<Database> {
   readonly #plugins: readonly SyncKyselyPlugin[];
 
@@ -100,7 +127,7 @@ export class QueryBuilderDsl<Database> extends Kysely<Database> {
     this.#plugins = plugins;
   }
 
-  afterQueryHook(result: PluginTransformResultArgs["result"]) {
+  afterQueryHook(result: QueryResult<UnknownRow>) {
     this.#plugins.forEach((plugin) => {
       result = plugin.transformResultSync({ result });
     });

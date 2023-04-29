@@ -21,6 +21,7 @@ import { afterAll, beforeAll } from "vitest";
 import { DatabaseError, MigrationError } from "effect-sql/errors";
 import { ConfigError } from "@effect/io/Config/Error";
 import { PostgreSqlSandboxedDriver } from "effect-sql/drivers/pg";
+import { KyselyQueryBuilder } from "effect-sql/builders/kysely";
 
 export const testContainer = pipe(
   Effect.promise(async () => {
@@ -52,7 +53,7 @@ export const testLayer = pipe(
   )
 );
 
-export type TestLayer = ConnectionPool | Driver;
+export type TestLayer = ConnectionPool | Driver | KyselyQueryBuilder;
 
 const makeRuntime = <R, E, A>(layer: Layer.Layer<R, E, A>) =>
   Effect.gen(function* ($) {

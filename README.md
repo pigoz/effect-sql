@@ -99,6 +99,7 @@ import {
   runQuery,
   runQueryOne,
   runQueryExactlyOne,
+  KyselyQueryBuilder,
 } from "effect-sql/builders/kysely";
 
 import { transaction } from "effect-sql/query";
@@ -126,8 +127,6 @@ import {
   ConnectionPool,
   ConnectionPoolScopedService,
   Driver,
-  AfterQueryHook,
-  afterQueryHook
 } from "effect-sql/query";
 
 import { MigrationLayer } from "effect-sql/schema/pg";
@@ -146,25 +145,18 @@ const ConnectionPoolLive = Layer.scoped(
 const MigrationLive =
   MigrationLayer(path.resolve(__dirname, "../migrations/pg"));
 
-// Hook that picks up the useCamelCaseTransformer configuration option
-// used above and handles camelization of QueryResult rows
-const AfterQueryHookLive = Layer.succeed(
-  AfterQueryHook,
-  afterQueryHook({ hook: (queryResult) => db.afterQueryHook(queryResult) })
+const QueryBuilderLive = Layer.succeed(
+  KyselyQueryBuilder,
+  db
 );
 
 pipe(
   post3,
-  Effect.provideLayer(
-    Effect.provideMerge(
-      ConnectionPoolLive,
-      AfterQueryHookLive
-    )),
   Effect.provideLayer(pipe(
     DriverLive,
     Layer.provideMerge(ConnectionPoolLive),
     Layer.provideMerge(MigrationLive),
-    Layer.provideMerge(AfterQueryHookLive)
+    Layer.provideMerge(QueryBuilderLive)
   )),
   Effect.runFork
 )

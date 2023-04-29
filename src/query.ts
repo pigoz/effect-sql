@@ -29,7 +29,7 @@ export interface QueryResult<T = UnknownRow> {
 // Hooks
 export interface AfterQueryHook extends Data.Case {
   _tag: "AfterQueryHook";
-  hook: (res: QueryResult) => QueryResult;
+  hook: (res: QueryResult) => Effect.Effect<never, DatabaseError, QueryResult>;
 }
 
 export const AfterQueryHook = Context.Tag<AfterQueryHook>(
@@ -198,9 +198,9 @@ export function runQuery<A = UnknownRow>(
     ),
     connected,
     Effect.flatMap((result) =>
-      Effect.match(
+      Effect.matchEffect(
         Effectx.optionalService(AfterQueryHook),
-        () => result,
+        () => Effect.succeed(result),
         (service) => service.hook(result)
       )
     ),
