@@ -45,6 +45,17 @@ export function PostgreSqlDriver<C extends PostgreSqlClient>(): Driver<C> {
       Effect.map((native) => ClientService({ native, savepoint: 0 }) as C)
     );
 
+  const disconnect = (client: C) =>
+    Effect.async<never, DatabaseError, void>((resume) =>
+      client.native.end((error) => resume(ErrorFromPg(error)))
+    );
+
+  const acquire = (client: C) =>
+    Effect.zipRight(Effect.logTrace(`checkout`), Effect.succeed(client));
+
+  const release = (client: C) =>
+    Effect.zipRight(Effect.logTrace(`release`), Effect.succeed(client));
+
   const runQueryImpl = (
     client: C,
     sql: string,
@@ -71,16 +82,15 @@ export function PostgreSqlDriver<C extends PostgreSqlClient>(): Driver<C> {
       );
     });
 
-  const disconnect = (client: C) =>
-    Effect.async<never, DatabaseError, void>((resume) =>
-      client.native.end((error) => resume(ErrorFromPg(error)))
-    );
-
   return {
     _tag: "Driver",
     connect,
-    runQuery: runQueryImpl,
     disconnect,
+
+    acquire,
+    release,
+
+    runQuery: runQueryImpl,
 
     start: {
       transaction: (client) =>

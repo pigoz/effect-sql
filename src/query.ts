@@ -79,8 +79,15 @@ type DriverQuery = Effect.Effect<never, DatabaseError, QueryResult>;
 export interface Driver<C extends Client = Client> {
   _tag: "Driver";
 
+  // connect -> effects the pool uses to create/destroy a client
+  // lifetime is managed through Scope.Scope
   connect(connectionString: string): Effect.Effect<never, DatabaseError, C>;
   disconnect(client: C): Effect.Effect<never, DatabaseError, void>;
+
+  // acquire -> effects the pool uses when giving us a client
+  // lifetime is managed through ConnectionScope
+  acquire(client: C): Effect.Effect<never, DatabaseError, C>;
+  release(client: C): Effect.Effect<never, DatabaseError, C>;
 
   runQuery(client: C, sql: string, params: readonly unknown[]): DriverQuery;
 
@@ -158,8 +165,16 @@ export function connect(
   return Effect.matchEffect(
     Effectx.optionalService(Client),
     () =>
-      Effect.flatMap(ConnectionPool, (service) =>
-        TaggedScope.tag(Pool.get(service.pool), ConnectionScope)
+      Effect.flatMap(
+        Effect.all({ pool: ConnectionPool, driver: Driver }),
+        ({ pool, driver }) =>
+          pipe(
+            Effect.acquireRelease(
+              Effect.flatMap(Pool.get(pool.pool), driver.acquire),
+              (client) => Effect.orDie(driver.release(client))
+            ),
+            TaggedScope.tag(ConnectionScope)
+          )
       ),
     (client) => Effect.succeed(onExistingMapper(client))
   );
@@ -167,7 +182,11 @@ export function connect(
 
 export function connected<R, E, A>(
   self: Effect.Effect<R | Client, E, A>
-): Effect.Effect<Exclude<R, Client> | ConnectionPool, DatabaseError | E, A> {
+): Effect.Effect<
+  Exclude<R, Client> | ConnectionPool | Driver,
+  DatabaseError | E,
+  A
+> {
   return pipe(
     connect(),
     Effect.flatMap((client) => Effect.provideService(self, Client, client)),
