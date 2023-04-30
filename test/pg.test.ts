@@ -14,6 +14,7 @@ import {
   transaction,
   IsolationLevel,
   Serializable,
+  sandbox,
 } from "effect-sql/query";
 import { DatabaseError, NotFound, TooMany } from "effect-sql/errors";
 import { usingLayer, testLayer } from "./helpers/layer";
@@ -213,6 +214,46 @@ describe("pg", () => {
       );
 
       expect(res).toEqual(E.right({ transaction_isolation: "serializable" }));
+    })
+  );
+
+  it.effect.only("handles sandboxing", () =>
+    Effect.gen(function* ($) {
+      const res1 = yield $(select, runQuery, sandbox, Effect.either);
+      expect(res1).toHaveProperty("right.rowCount", 0n);
+
+      const res2 = yield $(
+        Effect.all(
+          runQuery(insert("foo")),
+          runQuery(insert("foo")),
+          runQuery(select)
+        ),
+        sandbox,
+        Effect.either
+      );
+
+      expect(res2).toHaveProperty("right[0].rowCount", 1n);
+      expect(res2).toHaveProperty("right[1].rowCount", 1n);
+      expect(res2).toHaveProperty("right[2].rowCount", 2n);
+
+      const res3 = yield $(select, runQuery, sandbox, Effect.either);
+      expect(res3).toHaveProperty("right.rowCount", 0n);
+
+      const res4 = yield $(
+        Effect.all(
+          runQuery(insert("foo")),
+          Effect.either(
+            transaction(Effect.all(runQuery(insert("foo")), Effect.fail("boo")))
+          ),
+          runQuery(select)
+        ),
+        sandbox,
+        Effect.either
+      );
+
+      expect(res4).toHaveProperty("right[0].rowCount", 1n);
+      expect(res4).toHaveProperty("right[1].left", "boo");
+      expect(res4).toHaveProperty("right[2].rowCount", 1n);
     })
   );
 });
