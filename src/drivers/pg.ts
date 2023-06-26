@@ -45,6 +45,17 @@ export function PostgreSqlDriver<C extends PostgreSqlClient>(): Driver<C> {
       Effect.map((native) => ClientService({ native, savepoint: 0 }) as C)
     );
 
+  const disconnect = (client: C) =>
+    Effect.async<never, DatabaseError, void>((resume) =>
+      client.native.end((error) => resume(ErrorFromPg(error)))
+    );
+
+  const acquire = (client: C) =>
+    Effect.zipRight(Effect.logTrace(`checkout`), Effect.succeed(client));
+
+  const release = (client: C) =>
+    Effect.zipRight(Effect.logTrace(`release`), Effect.succeed(client));
+
   const runQueryImpl = (
     client: C,
     sql: string,
@@ -71,53 +82,81 @@ export function PostgreSqlDriver<C extends PostgreSqlClient>(): Driver<C> {
       );
     });
 
-  const disconnect = (client: C) =>
-    Effect.async<never, DatabaseError, void>((resume) =>
-      client.native.end((error) => resume(ErrorFromPg(error)))
-    );
+  const start = {
+    transaction: (client: C) =>
+      Effect.contextWithEffect((r: Context.Context<never>) =>
+        Option.match(
+          Context.getOption(r, IsolationLevel),
+          () => runQueryImpl(client, `start transaction`, []),
+          (isolation) =>
+            runQueryImpl(
+              client,
+              `start transaction isolation level ${isolation.sql}`,
+              []
+            )
+        )
+      ),
+    savepoint: (client: C, name: string) =>
+      runQueryImpl(client, `savepoint ${name}`, []),
+  };
 
-  return {
-    _tag: "Driver",
+  const rollback = {
+    transaction: (client: C) => runQueryImpl(client, `rollback`, []),
+    savepoint: (client: C, name: string) =>
+      runQueryImpl(client, `rollback to ${name}`, []),
+  };
+
+  const commit = {
+    transaction: (client: C) => runQueryImpl(client, `commit`, []),
+    savepoint: (client: C, name: string) =>
+      runQueryImpl(client, `release savepoint ${name}`, []),
+  };
+
+  const driver = {
+    _tag: "Driver" as const,
     connect,
-    runQuery: runQueryImpl,
     disconnect,
 
-    start: {
-      transaction: (client) =>
-        Effect.contextWithEffect((r: Context.Context<never>) =>
-          Option.match(
-            Context.getOption(r, IsolationLevel),
-            () => runQueryImpl(client, `start transaction`, []),
-            (isolation) =>
-              runQueryImpl(
-                client,
-                `start transaction isolation level ${isolation.sql}`,
-                []
-              )
-          )
-        ),
-      savepoint: (client, name) =>
-        runQueryImpl(client, `savepoint ${name}`, []),
-    },
+    acquire,
+    release,
 
-    rollback: {
-      transaction: (client) => runQueryImpl(client, `rollback`, []),
-      savepoint: (client, name) =>
-        runQueryImpl(client, `rollback to ${name}`, []),
-    },
+    runQuery: runQueryImpl,
 
-    commit: {
-      transaction: (client) => runQueryImpl(client, `commit`, []),
-      savepoint: (client, name) =>
-        runQueryImpl(client, `release savepoint ${name}`, []),
-    },
+    start,
+    rollback,
+    commit,
   };
+
+  const sandbox = (): Effect.Effect<never, never, Driver<C>> =>
+    Effect.succeed({
+      ...driver,
+      acquire: (client) =>
+        Effect.zipRight(
+          start.transaction(client),
+          Effect.succeed({ ...client, savepoint: 1 })
+        ),
+      release: (client) => Effect.orDie(rollback.transaction(client)),
+      sandbox: () => Effect.die("already sandboxed"),
+    });
+
+  return {
+    ...driver,
+    sandbox,
+  };
+}
+
+export function PostgreSqlSandboxedDriver2<
+  C extends PostgreSqlClient
+>(): Driver<C> {
+  const driver = PostgreSqlDriver<C>();
+  // driver.commit.transaction = driver.rollback.transaction;
+  return driver;
 }
 
 export function PostgreSqlSandboxedDriver<
   C extends PostgreSqlClient
 >(): Driver<C> {
   const driver = PostgreSqlDriver<C>();
-  driver.commit.transaction = driver.rollback.transaction;
+  // driver.commit.transaction = driver.rollback.transaction;
   return driver;
 }

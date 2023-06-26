@@ -23,6 +23,13 @@ export const effect = (() => {
     ) => {
       return it.skip(name, () => runTestPromise(Effect.suspend(self)), timeout);
     },
+    only: <E, A>(
+      name: string,
+      self: () => Effect.Effect<TestLayer, E, A>,
+      timeout = 5_000
+    ) => {
+      return it.only(name, () => runTestPromise(Effect.suspend(self)), timeout);
+    },
   });
 })();
 

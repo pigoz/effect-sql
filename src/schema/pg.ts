@@ -2,8 +2,7 @@ import { pipe } from "@effect/data/Function";
 import * as Layer from "@effect/io/Layer";
 import * as Effect from "@effect/io/Effect";
 
-import { ConnectionScope, connect } from "effect-sql/query";
-import * as TaggedScope from "effect-sql/TaggedScope";
+import { connect, scoped } from "effect-sql/query";
 import { MigrationError } from "effect-sql/errors";
 
 import { drizzle, NodePgClient } from "drizzle-orm/node-postgres";
@@ -30,6 +29,6 @@ export function migrate(migrationsFolder: string) {
         (error) => new MigrationError({ error })
       )
     ),
-    TaggedScope.scoped(ConnectionScope)
+    scoped
   );
 }

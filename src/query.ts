@@ -1,5 +1,6 @@
 import { identity, pipe } from "@effect/data/Function";
 import * as Effect from "@effect/io/Effect";
+import * as Ref from "@effect/io/Ref";
 import * as Data from "@effect/data/Data";
 import * as Exit from "@effect/io/Exit";
 import * as Context from "@effect/data/Context";
@@ -37,7 +38,11 @@ const Client = Context.Tag<Client>(Symbol.for("pigoz/effect-sql/Client"));
 
 export interface ConnectionScope extends Data.Case {
   _tag: "ConnectionScope";
+  client: Ref.Ref<Option.Option<Client>>;
 }
+
+export const ConnectionScopeService =
+  Data.tagged<ConnectionScope>("ConnectionScope");
 
 export const ConnectionScope = TaggedScope.Tag<ConnectionScope>(
   Symbol.for("pigoz/effect-sql/ConnectionScope")
@@ -79,8 +84,15 @@ type DriverQuery = Effect.Effect<never, DatabaseError, QueryResult>;
 export interface Driver<C extends Client = Client> {
   _tag: "Driver";
 
+  // connect -> effects the pool uses to create/destroy a client
+  // lifetime is managed through Scope.Scope
   connect(connectionString: string): Effect.Effect<never, DatabaseError, C>;
   disconnect(client: C): Effect.Effect<never, DatabaseError, void>;
+
+  // acquire -> effects the pool uses when giving us a client
+  // lifetime is managed through ConnectionScope
+  acquire(client: C): Effect.Effect<never, DatabaseError, C>;
+  release(client: C): Effect.Effect<never, DatabaseError, void>;
 
   runQuery(client: C, sql: string, params: readonly unknown[]): DriverQuery;
 
@@ -98,6 +110,8 @@ export interface Driver<C extends Client = Client> {
     savepoint(client: C, name: string): DriverQuery;
     transaction(client: C): DriverQuery;
   };
+
+  sandbox(): Effect.Effect<never, never, Driver<C>>;
 }
 
 export const Driver = Context.Tag<Driver>(
@@ -156,10 +170,33 @@ export function connect(
   onExistingMapper: (client: Client) => Client = identity
 ) {
   return Effect.matchEffect(
-    Effectx.optionalService(Client),
+    Effect.firstSuccessOf([
+      Effectx.optionalService(Client),
+      pipe(
+        Effectx.optionalService(ConnectionScope),
+        Effect.flatMap((scope) => Effect.flatten(Ref.get(scope.client)))
+      ),
+    ]),
     () =>
-      Effect.flatMap(ConnectionPool, (service) =>
-        TaggedScope.tag(Pool.get(service.pool), ConnectionScope)
+      Effect.flatMap(
+        Effect.all({ pool: ConnectionPool, driver: Driver }),
+        ({ pool, driver }) =>
+          pipe(
+            Effect.acquireRelease(
+              Effect.flatMap(Pool.get(pool.pool), (client) =>
+                Effect.zipRight(
+                  Effect.matchEffect(
+                    Effectx.optionalService(ConnectionScope),
+                    () => Effect.unit(),
+                    (scope) => Ref.set(scope.client, Option.some(client))
+                  ),
+                  driver.acquire(client)
+                )
+              ),
+              (client) => Effect.orDie(driver.release(client))
+            ),
+            TaggedScope.tag(ConnectionScope)
+          )
       ),
     (client) => Effect.succeed(onExistingMapper(client))
   );
@@ -167,11 +204,15 @@ export function connect(
 
 export function connected<R, E, A>(
   self: Effect.Effect<R | Client, E, A>
-): Effect.Effect<Exclude<R, Client> | ConnectionPool, DatabaseError | E, A> {
+): Effect.Effect<
+  Exclude<R, Client> | ConnectionPool | Driver,
+  DatabaseError | E,
+  A
+> {
   return pipe(
     connect(),
     Effect.flatMap((client) => Effect.provideService(self, Client, client)),
-    TaggedScope.scoped(ConnectionScope)
+    scoped
   );
 }
 
@@ -290,8 +331,27 @@ export function transaction<R, E1, A>(
       Effect.provideService(Client, client)
     );
 
-  return TaggedScope.scoped(
-    Effect.acquireUseRelease(acquire, use, release),
-    ConnectionScope
+  return scoped(Effect.acquireUseRelease(acquire, use, release));
+}
+
+export function sandbox<R, E, A>(
+  self: Effect.Effect<R, E, A>
+): Effect.Effect<Exclude<R, ConnectionScope> | Driver, E, A> {
+  return scoped(
+    Effect.acquireUseRelease(
+      Effect.flatMap(Driver, (driver) => driver.sandbox()),
+      (driver) => Effect.provideService(self, Driver, driver),
+      () => Effect.unit()
+    )
+  );
+}
+
+export function scoped<R, E, A>(self: Effect.Effect<R, E, A>) {
+  return Effect.flatMap(Ref.make(Option.none()), (client) =>
+    TaggedScope.scoped(
+      self,
+      ConnectionScope,
+      ConnectionScopeService({ client })
+    )
   );
 }
