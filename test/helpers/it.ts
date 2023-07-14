@@ -1,5 +1,5 @@
 import * as V from "vitest";
-import * as Effect from "@effect/io/Effect";
+import { Effect } from "effect";
 import { TestLayer, runTestPromise } from "./layer";
 import { transaction } from "effect-sql/query";
 

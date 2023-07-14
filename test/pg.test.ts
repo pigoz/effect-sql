@@ -1,9 +1,4 @@
-import { pipe } from "@effect/data/Function";
-import * as E from "@effect/data/Either";
-import * as Effect from "@effect/io/Effect";
-import * as Layer from "@effect/io/Layer";
-import * as Config from "@effect/io/Config";
-import * as ConfigSecret from "@effect/io/Config/Secret";
+import { pipe, Effect, Either, Layer, Config, ConfigSecret } from "effect";
 import { it, describe, expect } from "./helpers";
 import {
   ConnectionPool,
@@ -45,7 +40,7 @@ describe("pg", () => {
       const res1 = yield* $(select, runQueryOne, Effect.either);
 
       expect(res1).toEqual(
-        E.left(
+        Either.left(
           new NotFound({
             sql: 'select * from "cities"',
             parameters: [],
@@ -60,7 +55,7 @@ describe("pg", () => {
       yield* $(insert("foo"), runQuery);
 
       const res2 = yield* $(selectName, runQueryOne, Effect.either);
-      expect(res2).toEqual(E.right({ name: "foo" }));
+      expect(res2).toEqual(Either.right({ name: "foo" }));
     })
   );
 
@@ -71,7 +66,7 @@ describe("pg", () => {
 
       const res2 = yield* $(selectName, runQueryOne, Effect.either);
 
-      expect(res2).toEqual(E.right({ name: "foo" }));
+      expect(res2).toEqual(Either.right({ name: "foo" }));
     })
   );
 
@@ -79,8 +74,8 @@ describe("pg", () => {
     Effect.gen(function* ($) {
       const res1 = yield* $(select, runQueryExactlyOne, Effect.either);
 
-      expect(res1).toEqual(
-        E.left(
+      expect(res1).roEqual(
+        Either.left(
           new NotFound({
             sql: 'select * from "cities"',
             parameters: [],
@@ -95,7 +90,7 @@ describe("pg", () => {
       yield* $(insert("foo"), runQuery);
 
       const res2 = yield* $(selectName, runQueryExactlyOne, Effect.either);
-      expect(res2).toEqual(E.right({ name: "foo" }));
+      expect(res2).toEqual(Either.right({ name: "foo" }));
     })
   );
 
@@ -152,7 +147,7 @@ describe("pg", () => {
       );
 
       expect(res).toEqual(
-        E.left(
+        Either.left(
           new DatabaseError({
             name: "ConnectionPoolError",
             message: `connect ECONNREFUSED 127.0.0.1:80`,

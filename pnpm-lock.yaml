@@ -1,12 +1,13 @@
 lockfileVersion: '6.0'
 
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
 dependencies:
-  '@effect/data':
-    specifier: ^0.12.6
-    version: 0.12.6
-  '@effect/io':
-    specifier: ^0.26.0
-    version: 0.26.0
+  effect:
+    specifier: 2.0.0-next.16
+    version: 2.0.0-next.16
 
 optionalDependencies:
   drizzle-orm:
@@ -616,18 +617,18 @@ packages:
       '@babel/core': 7.22.5
     dev: true
 
-  /@effect/data@0.12.6:
-    resolution: {integrity: sha512-XRhB7dnIpAOwAy7xKbjEvcG9E0+R7+yfwA6mcSpPja8zu6hYvIAbLtmiuKSRQ+QmjGRv4NzIJ6GwuHHpYHkoIg==}
+  /@effect/data@0.14.2:
+    resolution: {integrity: sha512-0H57JUqtYTZZWC15OOcvGQBIae21/OWQXaX7WOCfC2+uUIYfV+OuKEL/4qKP32d3PCTDP9wHz+UPp8tBN+wX4w==}
     dev: false
 
   /@effect/data@0.4.1:
     resolution: {integrity: sha512-FdQ0qbYL7t+GP5eWdAPC+oeN2w3zqnujrdDLp/sj58UtMxFSHg21crprmbmiAJAWsL5EdB9aZzcisBGn382xHg==}
     dev: true
 
-  /@effect/io@0.26.0:
-    resolution: {integrity: sha512-umwZ/sRoV7zb/8WwoiK7xWoypqvY6C1EXWEGORpViAFUTx3/bXc9i7JtdttTWVokXb3qogrxGX2SHopB20I4vQ==}
+  /@effect/io@0.32.2:
+    resolution: {integrity: sha512-NLDNAoAjlT3SoaiF2N4NkelOwZbNo11QEqmoR5u9tI3GDArJVBflMsqdRZhyzS61TMDXXmJDfmjovA6yPNQKvg==}
     dependencies:
-      '@effect/data': 0.12.6
+      '@effect/data': 0.14.2
     dev: false
 
   /@effect/io@0.8.0:
@@ -2781,6 +2782,13 @@ packages:
   /eastasianwidth@0.2.0:
     resolution: {integrity: sha512-I88TYZWc9XiYHRQ4/3c5rjjfgkjhLyW2luGIheGERbNQ6OY7yTybanSpDXZa8y7VUP9YmDcYa+eyq4ca7iLqWA==}
     dev: true
+
+  /effect@2.0.0-next.16:
+    resolution: {integrity: sha512-J+mLxtWI3xpaAjJL1nMpn3byX82HtCDT3j2vx/UZEKtN/7tfKF7Du6Vz00qMrBSZ3n6Siy6hEAvcylRuviLSHQ==}
+    dependencies:
+      '@effect/data': 0.14.2
+      '@effect/io': 0.32.2
+    dev: false
 
   /electron-to-chromium@1.4.431:
     resolution: {integrity: sha512-m232JTVmCawA2vG+1azVxhKZ9Sv1Q//xxNv5PkP5rWxGgQE8c3CiZFrh8Xnp+d1NmNxlu3QQrGIfdeW5TtXX5w==}
