@@ -24,7 +24,7 @@ const ErrorFromPg = (error?: Error) =>
           message: error.message,
         })
       )
-    : Effect.unit();
+    : Effect.unit;
 
 function QueryResultFromPg<A>(result: pg.QueryResult): QueryResult<A> {
   return {
@@ -85,16 +85,15 @@ export function PostgreSqlDriver<C extends PostgreSqlClient>(): Driver<C> {
     start: {
       transaction: (client) =>
         Effect.contextWithEffect((r: Context.Context<never>) =>
-          Option.match(
-            Context.getOption(r, IsolationLevel),
-            () => runQueryImpl(client, `start transaction`, []),
-            (isolation) =>
+          Option.match(Context.getOption(r, IsolationLevel), {
+            onNone: () => runQueryImpl(client, `start transaction`, []),
+            onSome: (isolation) =>
               runQueryImpl(
                 client,
                 `start transaction isolation level ${isolation.sql}`,
                 []
-              )
-          )
+              ),
+          })
         ),
       savepoint: (client, name) =>
         runQueryImpl(client, `savepoint ${name}`, []),

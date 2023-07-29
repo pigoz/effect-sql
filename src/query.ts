@@ -3,7 +3,6 @@ import * as Effect from "@effect/io/Effect";
 import * as Data from "@effect/data/Data";
 import * as Exit from "@effect/io/Exit";
 import * as Context from "@effect/data/Context";
-import * as Either from "@effect/data/Either";
 import * as REA from "@effect/data/ReadonlyArray";
 import * as Scope from "@effect/io/Scope";
 import * as Option from "@effect/data/Option";
@@ -13,7 +12,6 @@ import * as ConfigSecret from "@effect/io/Config/Secret";
 import * as Pool from "@effect/io/Pool";
 import { ConfigError } from "@effect/io/Config/Error";
 import * as TaggedScope from "effect-sql/TaggedScope";
-import * as Effectx from "effect-sql/Effectx";
 import { DatabaseError, NotFound, TooMany } from "effect-sql/errors";
 
 // General types
@@ -110,7 +108,7 @@ const defaultConfig = {
   // drop database by connecting to i.e. template1
   databaseName: pipe(
     Config.string("DATABASE_NAME"),
-    Config.optional,
+    Config.option,
     Config.withDefault(Option.none())
   ),
 };
@@ -123,15 +121,14 @@ export function ConnectionPoolScopedService(
   const getConnectionString = pipe(
     Effect.config(Config.all({ ...defaultConfig, ...config })),
     Effect.map(({ databaseUrl, databaseName }) =>
-      Option.match(
-        databaseName,
-        () => ConfigSecret.value(databaseUrl),
-        (databaseName) => {
+      Option.match(databaseName, {
+        onNone: () => ConfigSecret.value(databaseUrl),
+        onSome: (databaseName) => {
           const uri = new URL(ConfigSecret.value(databaseUrl));
           uri.pathname = databaseName;
           return uri.toString();
-        }
-      )
+        },
+      })
     )
   );
 
@@ -142,7 +139,12 @@ export function ConnectionPoolScopedService(
       )
     );
 
-    return Pool.makeWithTTL(get, 1, 20, Duration.seconds(60));
+    return Pool.makeWithTTL({
+      acquire: get,
+      min: 1,
+      max: 20,
+      timeToLive: Duration.seconds(60),
+    });
   };
 
   return pipe(
@@ -154,14 +156,16 @@ export function ConnectionPoolScopedService(
 
 export function connect(
   onExistingMapper: (client: Client) => Client = identity
-) {
-  return Effect.matchEffect(
-    Effectx.optionalService(Client),
-    () =>
-      Effect.flatMap(ConnectionPool, (service) =>
-        TaggedScope.tag(Pool.get(service.pool), ConnectionScope)
-      ),
-    (client) => Effect.succeed(onExistingMapper(client))
+): Effect.Effect<ConnectionScope | ConnectionPool, DatabaseError, Client> {
+  return Effect.serviceOption(Client).pipe(
+    Effect.flatten,
+    Effect.matchEffect({
+      onFailure: () =>
+        Effect.flatMap(ConnectionPool, (service) =>
+          TaggedScope.tag(Pool.get(service.pool), ConnectionScope)
+        ),
+      onSuccess: (client) => Effect.succeed(onExistingMapper(client)),
+    })
   );
 }
 
@@ -193,14 +197,11 @@ export function runQueryOne<A>(
   sql: string,
   parameters?: readonly unknown[]
 ): Effect.Effect<ConnectionPool | Driver, DatabaseError | NotFound, A> {
-  return pipe(
-    runQuery<A>(sql, parameters),
+  return runQuery<A>(sql, parameters).pipe(
     Effect.flatMap((result) =>
-      pipe(
+      Effect.mapError(
         REA.head(result.rows),
-        Either.fromOption(
-          () => new NotFound({ sql, parameters: parameters ?? [] })
-        )
+        () => new NotFound({ sql, parameters: parameters ?? [] })
       )
     )
   );
@@ -226,11 +227,9 @@ export function runQueryExactlyOne<A>(
           );
         }
 
-        return pipe(
-          head,
-          Either.fromNullable(
-            () => new NotFound({ sql, parameters: parameters ?? [] })
-          )
+        return Effect.mapError(
+          Option.fromNullable(head),
+          () => new NotFound({ sql, parameters: parameters ?? [] })
         );
       })
     )
@@ -282,10 +281,10 @@ export function transaction<R, E1, A>(
   const release = <E, A>(client: Client, exit: Exit.Exit<E, A>) =>
     pipe(
       exit,
-      Exit.match(
-        () => rollback,
-        () => commit
-      ),
+      Exit.match({
+        onFailure: () => rollback,
+        onSuccess: () => commit,
+      }),
       Effect.orDie, // XXX handle error when rolling back?
       Effect.provideService(Client, client)
     );

@@ -66,7 +66,7 @@ const makeRuntime = <R, E, A>(layer: Layer.Layer<R, E, A>) =>
 
     return {
       runtime,
-      close: Scope.close(scope, Exit.unit()),
+      close: Scope.close(scope, Exit.unit),
     };
   });
 

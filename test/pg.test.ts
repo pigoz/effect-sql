@@ -177,7 +177,7 @@ describe("pg", () => {
       expect(yield* $(count)).toEqual(2);
 
       yield* $(
-        Effect.all(runQuery(insert("foo")), Effect.fail("fail")),
+        Effect.all([runQuery(insert("foo")), Effect.fail("fail")]),
         transaction,
         Effect.either
       );
@@ -189,11 +189,11 @@ describe("pg", () => {
   it.effect("create database", () =>
     Effect.gen(function* ($) {
       const res = yield* $(
-        Effect.all(
+        Effect.all([
           runQuery(`drop database if exists "foo"`),
           runQuery(`create database "foo"`),
-          runQuery(`drop database "foo"`)
-        ),
+          runQuery(`drop database "foo"`),
+        ]),
         Effect.zipRight(Effect.succeed("ok")),
         Effect.either
       );

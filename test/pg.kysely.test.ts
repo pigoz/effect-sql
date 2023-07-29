@@ -136,12 +136,12 @@ describe("pg – kysely", () => {
       const query = db.selectFrom("cities").select("createdAt");
 
       const res2 = yield* $(
-        Effect.all(
+        Effect.all([
           Effect.map(runQuery(query), (_) => _.rows[0]!),
           Effect.map(runQueryRows(query), (_) => _[0]!),
           runQueryOne(query),
-          runQueryExactlyOne(query)
-        ),
+          runQueryExactlyOne(query),
+        ]),
         Effect.either
       );
 
@@ -187,12 +187,12 @@ describe("pg – kysely", () => {
           nagato: insertUser("Nagato"),
         }),
         Effect.tap((_) =>
-          Effect.all(
+          Effect.all([
             insertVisits(_.kyoto, _.haruhi, 12),
             insertVisits(_.tokyo, _.haruhi, 17),
             insertVisits(_.osaka, _.haruhi, 10),
-            insertVisits(_.tokyo, _.nagato, 9999)
-          )
+            insertVisits(_.tokyo, _.nagato, 9999),
+          ])
         )
       );
 

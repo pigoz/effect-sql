@@ -70,18 +70,18 @@ export class KyselyEffect<Database> extends Kysely<Database> {
   afterQueryHook<X>(
     result: QueryResult<X>
   ): Effect.Effect<never, DatabaseError, QueryResult<X>> {
-    return Effect.tryCatchPromise(
-      () => this.#transformResult(result),
-      (err) => this.#databaseError(err)
-    );
+    return Effect.tryPromise({
+      try: () => this.#transformResult(result),
+      catch: (err) => this.#databaseError(err),
+    });
   }
 
   afterQueryHookOne<X>(result: X): Effect.Effect<never, DatabaseError, X> {
     return pipe(
-      Effect.tryCatchPromise(
-        () => this.#transformResult<X>({ rows: [result] }),
-        (err) => this.#databaseError(err)
-      ),
+      Effect.tryPromise({
+        try: () => this.#transformResult<X>({ rows: [result] }),
+        catch: (err) => this.#databaseError(err),
+      }),
       Effect.map((x) => x.rows[0]!)
     );
   }

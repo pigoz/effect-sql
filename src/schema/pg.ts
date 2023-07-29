@@ -21,14 +21,14 @@ export function migrate(migrationsFolder: string) {
   return pipe(
     connect(),
     Effect.flatMap((client) =>
-      Effect.tryCatchPromise(
-        () => {
+      Effect.tryPromise({
+        try: () => {
           // XXX figure out how to remove the cast
           const d = drizzle(client.native as NodePgClient);
           return dmigrate(d, { migrationsFolder });
         },
-        (error) => new MigrationError({ error })
-      )
+        catch: (error) => new MigrationError({ error }),
+      })
     ),
     TaggedScope.scoped(ConnectionScope)
   );
