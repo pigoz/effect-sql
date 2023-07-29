@@ -1,5 +1,11 @@
 # effect-sql
 
+## 0.0.33
+
+### Patch Changes
+
+- [`6aa70f1`](https://github.com/pigoz/effect-sql/commit/6aa70f12f21346960aa3e0c40b02c6d141b9c6e9) Thanks [@pigoz](https://github.com/pigoz)! - chore: update effect to latest "framework" version
+
 ## 0.0.32
 
 ### Patch Changes
