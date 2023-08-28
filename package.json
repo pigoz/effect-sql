@@ -49,8 +49,8 @@
     "global": []
   },
   "dependencies": {
-    "@effect/data": "^0.17.0",
-    "@effect/io": "^0.36.0"
+    "@effect/data": "^0.17.6",
+    "@effect/io": "^0.38.2"
   },
   "optionalDependencies": {
     "drizzle-orm": "^0.26.5",
