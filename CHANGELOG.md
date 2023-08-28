@@ -1,5 +1,11 @@
 # effect-sql
 
+## 0.0.34
+
+### Patch Changes
+
+- [`5c9a229`](https://github.com/pigoz/effect-sql/commit/5c9a22915365109afc870968711bd03a2524dc23) Thanks [@pigoz](https://github.com/pigoz)! - chore: move @effect/\* to peerDependencies
+
 ## 0.0.33
 
 ### Patch Changes
