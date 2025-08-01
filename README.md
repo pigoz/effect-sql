@@ -1,8 +1,8 @@
-⚠️ **Note:**
+## ⚠️ This is dead
 
-This library is not being actively worked on anymore.
+Use the **official** `@effect/sql` package **instead**.
 
-I suggest you take a look at https://github.com/tim-smart/sqlfx since it's the de facto "official" library.
+https://www.npmjs.com/package/@effect/sql
 
 # effect-sql
 
